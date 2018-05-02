@@ -1,7 +1,7 @@
 // Assign this to global so that the subsequent modules can extend it:
-global.THREE = require("./lib/three.js");
-require("./lib/three-CanvasRenderer.js");
-require("./lib/three-Projector.js");
+global.THREE = require("../lib/three.js");
+require("../lib/three-CanvasRenderer.js");
+require("../lib/three-Projector.js");
 
 var fs = require("fs");
 var Canvas = require("canvas");
@@ -48,7 +48,7 @@ renderer.setSize(200, 200);
 
 renderer.render(scene, camera);
 
-var out = fs.createWriteStream("./test-out.png");
+var out = fs.createWriteStream("./three-scene-to.png");
 var canvasStream = canvas.pngStream();
 canvasStream.on("data", function (chunk) { out.write(chunk); });
 canvasStream.on("end", function () { console.log("done"); });
