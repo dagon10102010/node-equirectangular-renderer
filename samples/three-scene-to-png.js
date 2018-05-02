@@ -1,5 +1,6 @@
 // Assign this to global so that the subsequent modules can extend it:
-global.THREE = require("../lib/three.js");
+// global.THREE = require("../lib/three.js");
+global.THREE = require("three")
 require("../lib/three-CanvasRenderer.js");
 require("../lib/three-Projector.js");
 
