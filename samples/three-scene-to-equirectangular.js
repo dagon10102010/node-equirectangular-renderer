@@ -4,7 +4,7 @@ global.THREE = require("three");
 require("../lib/three-CanvasRenderer.js");
 require("../lib/three-Projector.js");
 var Canvas = require("canvas");
-var CubemapToEquirectangular = require('three.cubemap-to-equirectangular');
+// var CubemapToEquirectangular = require('three.cubemap-to-equirectangular');
 
 var equi;
 var container, stats;
@@ -67,11 +67,11 @@ function init() {
   // renderer.setSize( window.innerWidth, window.innerHeight );
   // renderer.sortObjects = false;
   // container.appendChild(renderer.domElement);
-  renderer = THREE.CanvasRenderer({
+  renderer = new THREE.CanvasRenderer({
     canvas: canvas
   });
 
-  equi = new CubemapToEquirectangular( renderer, true );
+  // equi = new CubemapToEquirectangular( renderer, true );
 
   // controls = new THREE.OrbitControls( camera, renderer.domElement );
 
@@ -79,7 +79,7 @@ function init() {
   // onWindowResize();
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
-  renderer.setSize( window.innerWidth, window.innerHeight );
+  // renderer.setSize( window.innerWidth, window.innerHeight );
 
   // document.getElementById( 'capture' ).addEventListener( 'click', function( e ) {
   //
@@ -114,7 +114,8 @@ function render() {
 }
 
 function exportImage() {
-  equi.update( camera, scene );
+  console.log("TODO: fix equi renderer");
+  // equi.update( camera, scene );
 }
 
 init();
