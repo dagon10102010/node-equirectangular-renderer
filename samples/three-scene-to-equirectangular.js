@@ -5,6 +5,7 @@ require("../lib/three-CanvasRenderer.js");
 require("../lib/three-Projector.js");
 var Canvas = require("canvas");
 // var CubemapToEquirectangular = require('three.cubemap-to-equirectangular');
+var CubemapToEquirectangular = require('../lib/three-CubemapToEquirectangular');
 
 var equi;
 var container, stats;
@@ -71,7 +72,7 @@ function init() {
     canvas: canvas
   });
 
-  // equi = new CubemapToEquirectangular( renderer, true );
+  equi = new CubemapToEquirectangular( renderer, true, { canvas: canvas} );
 
   // controls = new THREE.OrbitControls( camera, renderer.domElement );
 

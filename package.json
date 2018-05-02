@@ -18,8 +18,7 @@
   },
   "dependencies": {
     "canvas": "1.6.10",
-    "three": "^0.92.0",
-    "three.cubemap-to-equirectangular": "file:../THREE.CubemapToEquirectangular"
+    "three": "^0.92.0"
   },
   "devDependencies": {}
 }
