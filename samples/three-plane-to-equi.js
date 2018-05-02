@@ -1,7 +1,7 @@
 var fs = require("fs");
 // Assign this to global so that the subsequent modules can extend it:
-// global.THREE = require("../lib/three.js");
 global.THREE = require("three");
+
 require("../lib/three-Projector.js");
 
 var Canvas = require("canvas");
@@ -26,37 +26,20 @@ function init() {
 
   scene = new THREE.Scene();
 
-  var light = new THREE.DirectionalLight( 0xffffff, 1 );
-  light.position.set( 1, 1, 1 ).normalize();
-  scene.add( light );
+  // add plane to scene
+  var geometry = new THREE.PlaneGeometry( 5, 20, 32 );
+  var material = new THREE.MeshBasicMaterial( {color: 0xff00ff, side: THREE.DoubleSide} );
+  var plane = new THREE.Mesh( geometry, material );
 
-  var geometry = new THREE.BoxBufferGeometry( 20, 20, 20 );
+  plane.position.z = -3;
+  plane.scale.set(2,2,2);
+  plane.rotation.z = Math.PI / 4;
 
-  for ( var i = 0; i < 2000; i ++ ) {
-
-    var object = new THREE.Mesh( geometry, new THREE.MeshLambertMaterial( { color: Math.random() * 0xffffff } ) );
-
-    object.position.x = Math.random() * 800 - 400;
-    object.position.y = Math.random() * 800 - 400;
-    object.position.z = Math.random() * 800 - 400;
-
-    object.rotation.x = Math.random() * 2 * Math.PI;
-    object.rotation.y = Math.random() * 2 * Math.PI;
-    object.rotation.z = Math.random() * 2 * Math.PI;
-
-    object.scale.x = Math.random() + 0.5;
-    object.scale.y = Math.random() + 0.5;
-    object.scale.z = Math.random() + 0.5;
-
-    object.material.color.setRGB( object.position.x / 800 + .5, object.position.y / 800 + .5, object.position.z / 800 + .5 );
-
-    scene.add( object );
-  }
+  scene.add( plane );
 
   var canvas = new Canvas(window.innerWidth, window.innerHeight);
   canvas.addEventListener = function(event, func, bind_) {}; // mock function to avoid errors inside THREE.WebGlRenderer()
   renderer = new THREE.WebGLRenderer( { context: glContext, antialias: true, canvas: canvas });
-
 
   equi = new CubemapToEquirectangular( renderer, true, { canvas: canvas} );
 
@@ -70,7 +53,7 @@ function render() {
 
 function exportImage() {
   var canvas = equi.updateAndGetCanvas( camera, scene );
-  var out = fs.createWriteStream("./three-scene-equi.png");
+  var out = fs.createWriteStream("./three-plane-equi.png");
   var canvasStream = canvas.pngStream();
   canvasStream.on("data", function (chunk) { out.write(chunk); });
   canvasStream.on("end", function () { console.log("done"); });
