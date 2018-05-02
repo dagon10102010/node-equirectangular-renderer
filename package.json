@@ -13,7 +13,8 @@
   "author": "Mark vd Korput",
   "license": "TODO-TODO-TODO",
   "scripts": {
-    "sample1": "node samples/three-scene-to-png.js"
+    "sample1": "node samples/three-scene-to-png.js",
+    "sample2": "node samples/three-scene-to-equirectangular.js"
   },
   "dependencies": {
     "canvas": "1.6.10",
