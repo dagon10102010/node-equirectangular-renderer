@@ -3,9 +3,11 @@
 global.THREE = require("three");
 require("../lib/three-CanvasRenderer.js");
 require("../lib/three-Projector.js");
+
 var Canvas = require("canvas");
 // var CubemapToEquirectangular = require('three.cubemap-to-equirectangular');
 var CubemapToEquirectangular = require('../lib/three-CubemapToEquirectangular');
+var glContext = require('gl')(1,1); //headless-gl
 
 var equi;
 var container, stats;
@@ -61,16 +63,16 @@ function init() {
   }
 
   var canvas = new Canvas(window.innerWidth, window.innerHeight);
-
-  // renderer = new THREE.WebGLRenderer( { antialias: true, canvas: canvas });
+  canvas.addEventListener = function(event, func, bind_) {}; // mock function to avoid errors inside THREE.WebGlRenderer()
+  renderer = new THREE.WebGLRenderer( { context: glContext, antialias: true, canvas: canvas });
   // renderer.setClearColor( 0xf0f0f0 );
   // renderer.setPixelRatio( window.devicePixelRatio );
   // renderer.setSize( window.innerWidth, window.innerHeight );
   // renderer.sortObjects = false;
   // container.appendChild(renderer.domElement);
-  renderer = new THREE.CanvasRenderer({
-    canvas: canvas
-  });
+  // renderer = new THREE.CanvasRenderer({
+  //   canvas: canvas
+  // });
 
   equi = new CubemapToEquirectangular( renderer, true, { canvas: canvas} );
 
@@ -114,9 +116,16 @@ function render() {
 
 }
 
+var fs = require("fs");
+
 function exportImage() {
-  console.log("TODO: fix equi renderer");
-  // equi.update( camera, scene );
+  var canvas = equi.updateAndGetCanvas( camera, scene );
+  // console.log('pixies:', pixels);
+
+  var out = fs.createWriteStream("./three-scene-equi.png");
+  var canvasStream = canvas.pngStream();
+  canvasStream.on("data", function (chunk) { out.write(chunk); });
+  canvasStream.on("end", function () { console.log("done"); });
 }
 
 init();
