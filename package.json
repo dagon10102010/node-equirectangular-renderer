@@ -1,0 +1,22 @@
+{
+  "name": "node-equirectangular-renderer",
+  "version": "0.0.0",
+  "description": "TODO-TODO-TODO",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/fusefactory/TODO-TODO-TODO"
+  },
+  "engines": {
+    "npm": ">=5",
+    "node": ">=9"
+  },
+  "author": "Mark vd Korput",
+  "license": "TODO-TODO-TODO",
+  "scripts": {
+    "try": "node index.js"
+  },
+  "dependencies": {
+    "canvas": "1.6.10"
+  },
+  "devDependencies": {}
+}
