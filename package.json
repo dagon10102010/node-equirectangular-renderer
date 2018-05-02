@@ -16,7 +16,8 @@
     "sample1": "node samples/three-scene-to-png.js"
   },
   "dependencies": {
-    "canvas": "1.6.10"
+    "canvas": "1.6.10",
+    "three.cubemap-to-equirectangular": "^1.1.2"
   },
   "devDependencies": {}
 }
