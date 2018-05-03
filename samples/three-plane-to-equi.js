@@ -21,33 +21,98 @@ var window = {devicePixelRatio: 2, innerWidth: 800, innerHeight: 600};
 //   animate();
 // });
 
+// http://stackoverflow.com/a/14855016/2207790
+var loadTextureHTTP = function (url, callback) {
+  require('request')({
+    method: 'GET', url: url, encoding: null
+  }, function(error, response, body) {
+    if(error) throw error;
+
+    console.log('body:', body.length);
+
+    var image = new Canvas.Image;
+    image.src = body;
+
+    var texture = new THREE.Texture(image);
+    texture.needsUpdate = true;
+
+    teximage = image;
+    if (callback) callback(texture);
+  });
+};
+
 function init() {
   camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 1, 10000 );
   camera.position.set( 1,1,1 );
 
   scene = new THREE.Scene();
 
+
+  // untextured plane
+  var geometry = new THREE.PlaneGeometry( 5, 20, 32 );
+  var material = new THREE.MeshBasicMaterial( {color: 0xff00f0, side: THREE.DoubleSide} );
+  var plane = new THREE.Mesh( geometry, material );
+  plane.position.z = -3;
+  // plane.scale.set(2,2,2);
+  // plane.rotation.z = Math.PI / 4;
+  scene.add( plane );
+
+  // textured plane
+  material = new THREE.MeshBasicMaterial({ map: texture });
+  // material = new THREE.MeshBasicMaterial();
+  plane = new THREE.Mesh(geometry, material );
+  plane.position.z = -2.8;
+  plane.scale.set(0.5,0.5,0.5);
+  // plane.rotation.y = Math.PI;
+  scene.add( plane );
+
+  // loadTextureHTTP('http://localhost:8000/UV_Grid_Sm.jpg', function(tex) {
+  //   console.log('http done');
+  //   material.map = tex;
+  //   tex.matrix.identity().translate(-0.435, -0.235).scale(2.2,2.2);
+  //   exportImage();
+  // });
+
   var imgData = fs.readFileSync(path.join(__dirname, 'UV_Grid_Sm.jpg'));
-  // see https://stackoverflow.com/questions/39577911/alternative-to-new-image-of-browser-implementation-into-node-webgl-javascrip
-  teximage = new Canvas.Image;
+  teximage = new Canvas.Image();
   teximage.src = imgData;
 
-  var texture = new THREE.Texture(teximage, 512, 512);
+  var texture = new THREE.Texture(teximage);
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set( 4, 4 );
-  texture.matrixAutoUpdate = false; // set this to false to update texture.matrix manually
+  // texture.repeat.set( 4, 4 );
+  // texture.matrixAutoUpdate = false; // set this to false to update texture.matrix manually
+  material.map = texture;
 
-  // add plane to scene
-  var geometry = new THREE.PlaneGeometry( 5, 20, 32 );
-  var material = new THREE.MeshBasicMaterial( {color: 0xff00f0, map_DISABLED: texture, side: THREE.DoubleSide} );
-  var plane = new THREE.Mesh( geometry, material );
 
-  plane.position.z = -3;
-  plane.scale.set(2,2,2);
-  plane.rotation.z = Math.PI / 4;
 
-  scene.add( plane );
+
+  // teximage.onload = () => {
+  //   console.log('teximage.onload');
+  //     plane.material.map = new THREE.Texture(teximage);
+  //     plane.material.map.needsUpdate = true;
+  // }
+  // teximage.src = imgData;
+
+  // var API = {
+  //   offsetX: 0,
+  //   offsetY: 0,
+  //   repeatX: 0.25,
+  //   repeatY: 0.25,
+  //   rotation: Math.PI / 4, // positive is counter-clockwise
+  //   centerX: 0.5,
+  //   centerY: 0.5
+  // };
+  //
+  // texture.matrix
+  //   .identity()
+  //   .translate( - API.centerX, - API.centerY )
+  //   .rotate( API.rotation )					// I don't understand how rotation can preceed scale, but it seems to be required...
+  //   .scale( API.repeatX, API.repeatY )
+  //   .translate( API.centerX, API.centerY )
+  //   .translate( API.offsetX, API.offsetY );
+
+  scene.add( new THREE.HemisphereLight( 0x443333, 0x222233, 4 ) );
 
 
   var canvas = new Canvas(window.innerWidth, window.innerHeight);
@@ -76,4 +141,4 @@ function exportImage() {
 
 init();
 render();
-exportImage();
+// exportImage();
