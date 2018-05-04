@@ -1,25 +1,13 @@
 var fs = require("fs");
 var path = require("path");
-// Assign this to global so that the subsequent modules can extend it:
-global.THREE = require("three");
-require("../lib/three-Projector.js");
 var Canvas = require("canvas");
-// var CubemapToEquirectangular = require('three.cubemap-to-equirectangular');
-var CubemapToEquirectangular = require('../lib/three-CubemapToEquirectangular');
 var glContext = require('gl')(1,1); //headless-gl
-var jpeg = require('jpeg-js');
+var THREE = require("three");
+var CubemapToEquirectangular = require('../lib/three-CubemapToEquirectangular');
 
-var equi;
-var camera, scene, renderer;
-var cubeCamera;
-var radius = 100, theta = 0;
-var teximage;
+var equi, camera, scene, renderer, teximage;
 
-var window = {devicePixelRatio: 2, innerWidth: 800, innerHeight: 600};
-// window.addEventListener( 'load', function() {
-//   init();
-//   animate();
-// });
+var window = {innerWidth: 800, innerHeight: 600};
 
 // http://stackoverflow.com/a/14855016/2207790
 var loadTextureHTTP = function (url, callback) {
@@ -42,103 +30,94 @@ var loadTextureHTTP = function (url, callback) {
 };
 
 function init() {
+  // GL scene renderer
+  var canvasGL = new Canvas(window.innerWidth, window.innerHeight);
+  canvasGL.addEventListener = function(event, func, bind_) {}; // mock function to avoid errors inside THREE.WebGlRenderer()
+  renderer = new THREE.WebGLRenderer( { context: glContext, antialias: true, canvas: canvasGL });
+
+  // Equirectangular renderer
+  var canvasEqui = new Canvas(4096, 2048);
+  equi = new CubemapToEquirectangular( renderer, true, { canvas: canvasEqui} );
+
+  // camera
   camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 1, 10000 );
   camera.position.set( 1,1,1 );
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
 
-  scene = new THREE.Scene();
-
-
-  // untextured plane
-  var geometry = new THREE.PlaneGeometry( 5, 20, 32 );
-  var material = new THREE.MeshBasicMaterial( {color: 0xff00f0, side: THREE.DoubleSide} );
-  var plane = new THREE.Mesh( geometry, material );
-  plane.position.z = -3;
-  // plane.scale.set(2,2,2);
-  // plane.rotation.z = Math.PI / 4;
-  scene.add( plane );
-
-  // textured plane
-  material = new THREE.MeshBasicMaterial({ map: texture });
-  // material = new THREE.MeshBasicMaterial();
-  plane = new THREE.Mesh(geometry, material );
-  plane.position.z = -2.8;
-  plane.scale.set(0.5,0.5,0.5);
-  // plane.rotation.y = Math.PI;
-  scene.add( plane );
-
-  // loadTextureHTTP('http://localhost:8000/UV_Grid_Sm.jpg', function(tex) {
-  //   console.log('http done');
-  //   material.map = tex;
-  //   tex.matrix.identity().translate(-0.435, -0.235).scale(2.2,2.2);
-  //   exportImage();
-  // });
-
+  // load image from filesystem
   var imgData = fs.readFileSync(path.join(__dirname, 'UV_Grid_Sm.jpg'));
   teximage = new Canvas.Image();
   teximage.src = imgData;
 
+  // scene
+  scene = new THREE.Scene();
+
+  // untextured purple plane
+  var geometry = new THREE.PlaneGeometry( 10, 20, 32 );
+  var material = new THREE.MeshBasicMaterial( {color: 0xff00f0, side: THREE.DoubleSide} );
+  var plane = new THREE.Mesh( geometry, material );
+  plane.position.z = -3;
+  scene.add( plane );
+
+  // texture
   var texture = new THREE.Texture(teximage);
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.RepeatWrapping;
   // texture.repeat.set( 4, 4 );
   // texture.matrixAutoUpdate = false; // set this to false to update texture.matrix manually
-  material.map = texture;
 
+  // textured plane (shows up transparent)
+  material = new THREE.MeshBasicMaterial({ map: texture });
+  // material = new THREE.MeshBasicMaterial();
+  plane = new THREE.Mesh(geometry, material );
+  plane.position.z = -2.8;
+  plane.scale.set(0.5,0.5,0.5);
+  scene.add( plane );
 
-
-
-  // teximage.onload = () => {
-  //   console.log('teximage.onload');
-  //     plane.material.map = new THREE.Texture(teximage);
-  //     plane.material.map.needsUpdate = true;
-  // }
-  // teximage.src = imgData;
-
-  // var API = {
-  //   offsetX: 0,
-  //   offsetY: 0,
-  //   repeatX: 0.25,
-  //   repeatY: 0.25,
-  //   rotation: Math.PI / 4, // positive is counter-clockwise
-  //   centerX: 0.5,
-  //   centerY: 0.5
-  // };
+  // // load texture using HTTP request, also doesn't work but makes the textured plane white
+  // loadTextureHTTP('http://localhost:8000/UV_Grid_Sm.jpg', function(tex) {
+  //   console.log('http done');
+  //   material.map = tex;
+  //   tex.matrix.identity().translate(-0.435, -0.235).scale(2.2,2.2);
   //
-  // texture.matrix
-  //   .identity()
-  //   .translate( - API.centerX, - API.centerY )
-  //   .rotate( API.rotation )					// I don't understand how rotation can preceed scale, but it seems to be required...
-  //   .scale( API.repeatX, API.repeatY )
-  //   .translate( API.centerX, API.centerY )
-  //   .translate( API.offsetX, API.offsetY );
+  //   renderAndExport("./three-plane-equi.png", 3000);
+  // });
 
+  // light
   scene.add( new THREE.HemisphereLight( 0x443333, 0x222233, 4 ) );
-
-
-  var canvas = new Canvas(window.innerWidth, window.innerHeight);
-  canvas.addEventListener = function(event, func, bind_) {}; // mock function to avoid errors inside THREE.WebGlRenderer()
-  renderer = new THREE.WebGLRenderer( { context: glContext, antialias: true, canvas: canvas });
-
-  equi = new CubemapToEquirectangular( renderer, true, { canvas: canvas} );
-
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
 }
 
 function render() {
-  renderer.render( scene, camera );
+  // renderer.render( scene, camera );
+  var canv = equi.updateAndGetCanvas( camera, scene );
+
+  // overlay texture's source image on the canvas to verify image was loaded properly
+  canv.getContext('2d').drawImage(teximage, 0, 0, 1024, 512);
 }
 
-function exportImage() {
-  var canv = equi.updateAndGetCanvas( camera, scene );
-  canv.getContext('2d').drawImage(teximage, 0, 0, 1024, 512);
-
-  var out = fs.createWriteStream("./three-plane-equi.png");
-  var canvasStream = canv.pngStream();
+function exportImage(exportPath) {
+  var out = fs.createWriteStream(exportPath);
+  var canvasStream = equi.canvas.pngStream();
   canvasStream.on("data", function (chunk) { out.write(chunk); });
   canvasStream.on("end", function () { console.log("done"); });
 }
 
+function renderAndExport(exportPath, delay) {
+  if (delay !== undefined) {
+    console.log('waiting '+delay+' ms in case texture initialization takes time...');
+    setTimeout(function(){
+      console.log('rendering...');
+      render();
+      console.log('exporting...');
+      exportImage(exportPath);
+      console.log('done');
+    }, delay);
+  } else {
+    render();
+    exportImage(exportPath);
+  }
+}
+
 init();
-render();
-// exportImage();
+renderAndExport("./three-plane-equi.png", 3000);

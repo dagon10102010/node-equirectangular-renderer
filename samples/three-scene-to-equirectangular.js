@@ -14,7 +14,7 @@ var camera, scene, renderer;
 var cubeCamera;
 var radius = 100, theta = 0;
 
-var window = {devicePixelRatio: 2, innerWidth: 800, innerHeight: 600};
+var window = {innerWidth: 800, innerHeight: 600};
 // window.addEventListener( 'load', function() {
 //   init();
 //   animate();

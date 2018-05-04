@@ -8,7 +8,4 @@ stats.json
 .DS_Store
 npm-debug.log
 .idea
-three-scene-to.png
-three-scene-equi.png
-three-plane-equi.png
-three-shader.png
+three-*.png
