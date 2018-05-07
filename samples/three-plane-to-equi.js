@@ -4,11 +4,12 @@ var Canvas = require("canvas");
 var glContext = require('gl')(1,1); //headless-gl
 var THREE = require("three");
 var CubemapToEquirectangular = require('../lib/three-CubemapToEquirectangular');
+var getPixels = require("get-pixels");
 
 var equi, camera, scene, renderer, teximage;
 
 var window = {innerWidth: 800, innerHeight: 600};
-var LOAD_TEXTURE_USING_HTTP = false;
+var LOAD_METHOD = 'get-pixels'; // 'http' // null
 
 // http://stackoverflow.com/a/14855016/2207790
 var loadTextureHTTP = function (url, callback) {
@@ -30,7 +31,7 @@ var loadTextureHTTP = function (url, callback) {
   });
 };
 
-function init() {
+function init(imageLoadedCallback) {
   // GL scene renderer
   var canvasGL = new Canvas(window.innerWidth, window.innerHeight);
   canvasGL.addEventListener = function(event, func, bind_) {}; // mock function to avoid errors inside THREE.WebGlRenderer()
@@ -46,20 +47,20 @@ function init() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
 
-  // load image from filesystem
-  var imgData = fs.readFileSync(path.join(__dirname, 'UV_Grid_Sm.jpg'));
-  teximage = new Canvas.Image();
-  teximage.src = imgData;
+  // // load image from filesystem
+  // var imgData = fs.readFileSync(path.join(__dirname, 'UV_Grid_Sm.jpg'));
+  // teximage = new Canvas.Image();
+  // teximage.src = imgData;
 
   // scene
   scene = new THREE.Scene();
 
-  // untextured purple plane
-  var geometry = new THREE.PlaneGeometry( 10, 20, 32 );
-  var material = new THREE.MeshBasicMaterial( {color: 0xff00f0, side: THREE.DoubleSide} );
-  var plane = new THREE.Mesh( geometry, material );
-  plane.position.z = -3;
-  scene.add( plane );
+  // // untextured purple plane
+  var geometry = new THREE.PlaneGeometry( 10, 20, 1, 1 );
+  // var material = new THREE.MeshBasicMaterial( {color: 0xff00f0, side: THREE.DoubleSide} );
+  // var plane = new THREE.Mesh( geometry, material );
+  // plane.position.z = -3;
+  // scene.add( plane );
 
   // texture
   var texture = new THREE.Texture(teximage);
@@ -70,26 +71,29 @@ function init() {
   texture.needsUpdate = true;
 
   // textured plane (shows up transparent)
-  material = new THREE.MeshBasicMaterial({ map: texture });
+  var material = new THREE.MeshBasicMaterial({ map: texture });
   // material = new THREE.MeshBasicMaterial();
-  plane = new THREE.Mesh(geometry, material );
+  var plane = new THREE.Mesh(geometry, material );
   plane.position.z = -2.8;
   plane.scale.set(0.5,0.5,0.5);
   scene.add( plane );
 
-  // // load texture using HTTP request, also doesn't work but makes the textured plane white
-  if (LOAD_TEXTURE_USING_HTTP) {
-    loadTextureHTTP('http://localhost:8000/UV_Grid_Sm.jpg', function(tex) {
-      console.log('http done');
-      material.map = tex;
-      tex.matrix.identity();
+  getPixels(__dirname+"/UV_Grid_Sm.jpg", function(err, pixels) {
+    if(err) {
+      console.log("Failed to load texture using get-pixels:", err);
+      return;
+    }
 
-      renderAndExport("./three-plane-equi.png", 3000);
-    });
-  }
+    var texture = new THREE.DataTexture( new Uint8Array(pixels.data), pixels.shape[0], pixels.shape[1], THREE.RGBAFormat );
+    texture.needsUpdate = true;
+    material.map = texture;
 
-  // light
-  scene.add( new THREE.HemisphereLight( 0x443333, 0x222233, 4 ) );
+    // console.log("got pixels: ", pixels.shape, pixels);
+    // console.log("got buffer: ", pixels.data[1]);
+    // console.log("converted: ", new Uint8Array(pixels.data));
+
+    if (imageLoadedCallback !== undefined) imageLoadedCallback();
+  });
 }
 
 function render() {
@@ -97,7 +101,7 @@ function render() {
   var canv = equi.updateAndGetCanvas( camera, scene );
 
   // overlay texture's source image on the canvas to verify image was loaded properly
-  canv.getContext('2d').drawImage(teximage, 0, 0, 1024, 512);
+  // canv.getContext('2d').drawImage(teximage, 0, 0, 1024, 512);
 }
 
 function exportImage(exportPath) {
@@ -124,7 +128,6 @@ function renderAndExport(exportPath, delay) {
   }
 }
 
-init();
-if (!LOAD_TEXTURE_USING_HTTP) {
-  renderAndExport("./three-plane-equi.png", 3000);
-}
+init(function() {
+  renderAndExport("./three-plane-equi.png");
+});
