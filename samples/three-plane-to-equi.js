@@ -8,6 +8,7 @@ var CubemapToEquirectangular = require('../lib/three-CubemapToEquirectangular');
 var equi, camera, scene, renderer, teximage;
 
 var window = {innerWidth: 800, innerHeight: 600};
+var LOAD_TEXTURE_USING_HTTP = false;
 
 // http://stackoverflow.com/a/14855016/2207790
 var loadTextureHTTP = function (url, callback) {
@@ -66,6 +67,7 @@ function init() {
   texture.wrapT = THREE.RepeatWrapping;
   // texture.repeat.set( 4, 4 );
   // texture.matrixAutoUpdate = false; // set this to false to update texture.matrix manually
+  texture.needsUpdate = true;
 
   // textured plane (shows up transparent)
   material = new THREE.MeshBasicMaterial({ map: texture });
@@ -76,13 +78,15 @@ function init() {
   scene.add( plane );
 
   // // load texture using HTTP request, also doesn't work but makes the textured plane white
-  // loadTextureHTTP('http://localhost:8000/UV_Grid_Sm.jpg', function(tex) {
-  //   console.log('http done');
-  //   material.map = tex;
-  //   tex.matrix.identity().translate(-0.435, -0.235).scale(2.2,2.2);
-  //
-  //   renderAndExport("./three-plane-equi.png", 3000);
-  // });
+  if (LOAD_TEXTURE_USING_HTTP) {
+    loadTextureHTTP('http://localhost:8000/UV_Grid_Sm.jpg', function(tex) {
+      console.log('http done');
+      material.map = tex;
+      tex.matrix.identity();
+
+      renderAndExport("./three-plane-equi.png", 3000);
+    });
+  }
 
   // light
   scene.add( new THREE.HemisphereLight( 0x443333, 0x222233, 4 ) );
@@ -104,20 +108,23 @@ function exportImage(exportPath) {
 }
 
 function renderAndExport(exportPath, delay) {
+  var func = function() {
+    console.log('rendering...');
+    render();
+    console.log('exporting...');
+    exportImage(exportPath);
+    console.log('done');
+  };
+
   if (delay !== undefined) {
     console.log('waiting '+delay+' ms in case texture initialization takes time...');
-    setTimeout(function(){
-      console.log('rendering...');
-      render();
-      console.log('exporting...');
-      exportImage(exportPath);
-      console.log('done');
-    }, delay);
+    setTimeout(function(){ func(); }, delay);
   } else {
-    render();
-    exportImage(exportPath);
+    func();
   }
 }
 
 init();
-renderAndExport("./three-plane-equi.png", 3000);
+if (!LOAD_TEXTURE_USING_HTTP) {
+  renderAndExport("./three-plane-equi.png", 3000);
+}
