@@ -1,133 +1,79 @@
 var fs = require("fs");
-var path = require("path");
+var Promise = require('promise');
 var Canvas = require("canvas");
 var glContext = require('gl')(1,1); //headless-gl
 var THREE = require("three");
 var CubemapToEquirectangular = require('../lib/three-CubemapToEquirectangular');
 var getPixels = require("get-pixels");
 
-var equi, camera, scene, renderer, teximage;
+function createTexturedPlaneRenderingContext(opts) {
+  return new Promise(function (resolve, reject) {
+    var winW = opts.winWidth || 1280; // not sure if these matter?
+    var winH = opts.winHeight || 720;
+    var resolution = opts.resolution || [opts.width || 4096, opts.height || 2048];
 
-var window = {innerWidth: 800, innerHeight: 600};
-var LOAD_METHOD = 'get-pixels'; // 'http' // null
+    // GL scene renderer
+    var canvasGL = new Canvas(winW, winH);
+    canvasGL.addEventListener = function(event, func, bind_) {}; // mock function to avoid errors inside THREE.WebGlRenderer()
+    var renderer = new THREE.WebGLRenderer( { context: glContext, antialias: true, canvas: canvasGL });
 
-// http://stackoverflow.com/a/14855016/2207790
-var loadTextureHTTP = function (url, callback) {
-  require('request')({
-    method: 'GET', url: url, encoding: null
-  }, function(error, response, body) {
-    if(error) throw error;
+    // Equirectangular renderer
+    var canvasEqui = new Canvas(resolution[0], resolution[1]);
+    var equi = new CubemapToEquirectangular( renderer, true, {canvas: canvasEqui, width: resolution[0], height: resolution[1]} );
 
-    console.log('body:', body.length);
+    // camera
+    var camera = new THREE.PerspectiveCamera( 70, winW / winH, 1, 10000 );
+    camera.position.set( 0,0,0 );
+    camera.updateProjectionMatrix();
 
-    var image = new Canvas.Image;
-    image.src = body;
+    // scene; one plane
+    var scene = new THREE.Scene();
+    var geometry = new THREE.PlaneGeometry( 10, 20, 1, 1 );
+    var material = new THREE.MeshBasicMaterial();
+    var plane = new THREE.Mesh(geometry, material );
 
-    var texture = new THREE.Texture(image);
-    texture.needsUpdate = true;
+    // texture
+    var texture = new THREE.Texture();
+    texture.wrapS = THREE.RepeatWrapping; // THREE.ClampToEdgeWrapping // THREE.MirroredRepeatWrapping
+    texture.wrapT = THREE.RepeatWrapping;
+    // texture.repeat.set( 4, 4 );
+    // texture.matrixAutoUpdate = false; // set this to false to update texture.matrix manually
+    // texture.needsUpdate = true;
+    scene.add( plane );
 
-    teximage = image;
-    if (callback) callback(texture);
-  });
-};
+    // transformations
+    plane.position.z = -5.8;
+    plane.scale.set(0.6,0.6,1);
 
-function init(imageLoadedCallback) {
-  // GL scene renderer
-  var canvasGL = new Canvas(window.innerWidth, window.innerHeight);
-  canvasGL.addEventListener = function(event, func, bind_) {}; // mock function to avoid errors inside THREE.WebGlRenderer()
-  renderer = new THREE.WebGLRenderer( { context: glContext, antialias: true, canvas: canvasGL });
+    // load texture data (image) async and resolve/reject promise
+    getPixels(__dirname+"/UV_Grid_Sm.jpg", function(err, pixels) {
+      if(err) {
+        reject(err);
+        return;
+      }
 
-  // Equirectangular renderer
-  var canvasEqui = new Canvas(4096, 2048);
-  equi = new CubemapToEquirectangular( renderer, true, { canvas: canvasEqui} );
+      var texture = new THREE.DataTexture( new Uint8Array(pixels.data), pixels.shape[0], pixels.shape[1], THREE.RGBAFormat );
+      texture.needsUpdate = true;
+      material.map = texture;
 
-  // camera
-  camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 1, 10000 );
-  camera.position.set( 1,1,1 );
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-
-  // // load image from filesystem
-  // var imgData = fs.readFileSync(path.join(__dirname, 'UV_Grid_Sm.jpg'));
-  // teximage = new Canvas.Image();
-  // teximage.src = imgData;
-
-  // scene
-  scene = new THREE.Scene();
-
-  // // untextured purple plane
-  var geometry = new THREE.PlaneGeometry( 10, 20, 1, 1 );
-  // var material = new THREE.MeshBasicMaterial( {color: 0xff00f0, side: THREE.DoubleSide} );
-  // var plane = new THREE.Mesh( geometry, material );
-  // plane.position.z = -3;
-  // scene.add( plane );
-
-  // texture
-  var texture = new THREE.Texture(teximage);
-  texture.wrapS = THREE.RepeatWrapping;
-  texture.wrapT = THREE.RepeatWrapping;
-  // texture.repeat.set( 4, 4 );
-  // texture.matrixAutoUpdate = false; // set this to false to update texture.matrix manually
-  texture.needsUpdate = true;
-
-  // textured plane (shows up transparent)
-  var material = new THREE.MeshBasicMaterial({ map: texture });
-  // material = new THREE.MeshBasicMaterial();
-  var plane = new THREE.Mesh(geometry, material );
-  plane.position.z = -2.8;
-  plane.scale.set(0.5,0.5,0.5);
-  scene.add( plane );
-
-  getPixels(__dirname+"/UV_Grid_Sm.jpg", function(err, pixels) {
-    if(err) {
-      console.log("Failed to load texture using get-pixels:", err);
-      return;
-    }
-
-    var texture = new THREE.DataTexture( new Uint8Array(pixels.data), pixels.shape[0], pixels.shape[1], THREE.RGBAFormat );
-    texture.needsUpdate = true;
-    material.map = texture;
-
-    // console.log("got pixels: ", pixels.shape, pixels);
-    // console.log("got buffer: ", pixels.data[1]);
-    // console.log("converted: ", new Uint8Array(pixels.data));
-
-    if (imageLoadedCallback !== undefined) imageLoadedCallback();
+      resolve({
+        equi: equi,
+        camera: camera,
+        scene: scene,
+        render: function() { equi.updateAndGetCanvas( camera, scene ); },
+        exportImage: function(exportPath) {
+          var out = fs.createWriteStream(exportPath);
+          var canvasStream = equi.canvas.pngStream();
+          canvasStream.on("data", function (chunk) { out.write(chunk); });
+          // canvasStream.on("end", function () { console.log("done"); });
+        }
+      });
+    });
   });
 }
 
-function render() {
-  // renderer.render( scene, camera );
-  var canv = equi.updateAndGetCanvas( camera, scene );
-
-  // overlay texture's source image on the canvas to verify image was loaded properly
-  // canv.getContext('2d').drawImage(teximage, 0, 0, 1024, 512);
-}
-
-function exportImage(exportPath) {
-  var out = fs.createWriteStream(exportPath);
-  var canvasStream = equi.canvas.pngStream();
-  canvasStream.on("data", function (chunk) { out.write(chunk); });
-  canvasStream.on("end", function () { console.log("done"); });
-}
-
-function renderAndExport(exportPath, delay) {
-  var func = function() {
-    console.log('rendering...');
-    render();
-    console.log('exporting...');
-    exportImage(exportPath);
-    console.log('done');
-  };
-
-  if (delay !== undefined) {
-    console.log('waiting '+delay+' ms in case texture initialization takes time...');
-    setTimeout(function(){ func(); }, delay);
-  } else {
-    func();
-  }
-}
-
-init(function() {
-  renderAndExport("./three-plane-equi.png");
+createTexturedPlaneRenderingContext({resolution: [1024,512]}).then(function(ctx) {
+  ctx.render();
+  // ctx.exportImage("./three-plane-equi.png");, ctx.equi.canvas);
+  ctx.exportImage("./three-plane-equi.png");
 });
