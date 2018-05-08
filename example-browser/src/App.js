@@ -2,7 +2,6 @@ import React, { Component } from 'react';
 import * as THREE from 'three';
 import OrbitControlsPatcher from 'three-orbit-controls';
 import './App.css';
-// import createTexturedPlaneRenderer from './texturedPlaneRenderer';
 import { createTexturedPlaneRenderer } from 'equirectangular-renderer';
 
 // apply OrbitControls 'patch' to our THREE intance, so it's available from there
@@ -12,6 +11,7 @@ class App extends Component {
 
   constructor(opts) {
     super(opts);
+    window.appp = this;
 
     this.state = {
       equiBlobUrl: undefined,
@@ -31,11 +31,14 @@ class App extends Component {
 
       const el = document.getElementsByClassName('three-scene')[0];
       el.appendChild(this.ctx.renderer.domElement);
+      // document.getElementById('three-scene').appendChild(this.ctx.renderer.domElement);
 
       this.ctx.scene.add(this.createBackground());
 
       if (OrbitControls) {
-        this.controls = OrbitControls(this.ctx.camera, this.ctx.renderer.domElement);
+        this.controls = new OrbitControls(this.ctx.camera);
+        // this.controls.update();
+        this.controls.target.z = -0.00001;  // for some reason the OrbitControls don't work without this
       } else {
         console.log('OrbitControls not available!');
       }

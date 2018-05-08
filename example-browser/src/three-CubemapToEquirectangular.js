@@ -1,1 +1,0 @@
-../../lib/three-CubemapToEquirectangular.js
