@@ -1,7 +1,7 @@
 var fs = require("fs");
 var Promise = require('promise');
 var THREE = require("three");
-var CubemapToEquirectangular = require('../lib/three-CubemapToEquirectangular');
+var CubemapToEquirectangular = require('./three-CubemapToEquirectangular');
 var getPixels = require("get-pixels");
 
 function createTexturedPlaneRenderer(opts) {

@@ -1,6 +1,7 @@
 {
   "name": "equirectangular-renderer",
   "version": "0.0.0",
+  "main": "index.js",
   "description": "TODO-TODO-TODO",
   "repository": {
     "type": "git",

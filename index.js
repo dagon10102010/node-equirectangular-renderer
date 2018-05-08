@@ -1,4 +1,4 @@
-const { createTexturedPlaneRenderer } = require('./src/texturedPlaneRenderer');
+const createTexturedPlaneRenderer = require('./src/texturedPlaneRenderer');
 
 module.exports = {
   createTexturedPlaneRenderer

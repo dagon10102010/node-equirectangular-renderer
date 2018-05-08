@@ -1,7 +1,9 @@
 import React, { Component } from 'react';
-import { createTexturedPlaneRenderingContext } from 'equirectangular-renderer';
-// import logo from './logo.svg';
 import './App.css';
+// import EquiRenderer from 'equirectangular-renderer';
+// import createTexturedPlaneRenderer from './texturedPlaneRenderer';
+import { createTexturedPlaneRenderer } from 'equirectangular-renderer';
+
 const THREE = require('three');
 
 
@@ -95,7 +97,7 @@ class App extends Component {
     super(opts);
 
     this.state = {
-      posString: '0,0,-1',
+      posString: '0,0,-20',
       scaleString: '1,1,1',
       rotString: '0,0,0'
     };
@@ -108,12 +110,20 @@ class App extends Component {
     // const el = document.getElementsByClassName('three-scene')[0];
     // el.appendChild(this.threeScene.renderer.domElement);
 
-    createTexturedPlaneRenderingContext({image: 'UV_Grid_Sm.jpg', resolution: [1024,512], scale: [1,0.5,0.5]}).then(function(ctx) {
+    createTexturedPlaneRenderer({image: 'UV_Grid_Sm.jpg', resolution: [1024,512], translate: [0,0,-20], scale: [1,0.5,0.5]})
+    .then((ctx) => {
+      // console.log('createTexturedPlaneRenderer done: ', ctx);
+
       this.ctx = ctx;
       this.ctx.renderer.setSize(window.innerWidth, 300);
 
       const el = document.getElementsByClassName('three-scene')[0];
       el.appendChild(this.ctx.renderer.domElement);
+
+      this.animate();
+    })
+    .catch((err) => {
+      console.log('createTexturedPlaneRenderer err:', err);
     });
   }
 
@@ -130,16 +140,15 @@ class App extends Component {
   handleSubmit(e) {
     e.preventDefault();
 
-    if (this.ctx)
-
-    var fltstrings = this.state.posString.split(',');
-    this.threeScene.mesh.position.set(parseFloat(fltstrings[0]), parseFloat(fltstrings[1]), parseFloat(fltstrings[2]));
-
-    fltstrings = this.state.rotString.split(',');
-    this.threeScene.mesh.rotation.set(parseFloat(fltstrings[0]), parseFloat(fltstrings[1]), parseFloat(fltstrings[2]));
-
-    fltstrings = this.state.scaleString.split(',');
-    this.threeScene.mesh.scale.set(parseFloat(fltstrings[0]), parseFloat(fltstrings[1]), parseFloat(fltstrings[2]));
+    if (this.ctx) {
+      // the generated context has an update convenience method which takes
+      // transformation options and applies them to the plane
+      this.ctx.update({
+        translate: this.state.posString.split(',').map(s => parseFloat(s)),
+        scale: this.state.scaleString.split(',').map(s => parseFloat(s)),
+        rotation: this.state.rotString.split(',').map(s => parseFloat(s) / 180 * Math.PI)
+      });
+    }
   }
 
   handleCamReset(e) {
@@ -165,10 +174,9 @@ class App extends Component {
          </label>
 
          <label>
-           Rotation:
+           Rotation (deg):
            <input type="text" value={this.state.rotString} onChange={(e) => this.setState({ rotString: e.target.value }) } />
          </label>
-
 
          <input type="submit" value="Submit" />
          <input type="button" value="reset cam" onClick={(e) => this.handleCamReset(e)}/>
