@@ -1,7 +1,12 @@
 import React, { Component } from 'react';
+import * as THREE from 'three';
+import OrbitControlsPatcher from 'three-orbit-controls';
 import './App.css';
 // import createTexturedPlaneRenderer from './texturedPlaneRenderer';
 import { createTexturedPlaneRenderer } from 'equirectangular-renderer';
+
+// apply OrbitControls 'patch' to our THREE intance, so it's available from there
+const OrbitControls = OrbitControlsPatcher(THREE);
 
 class App extends Component {
 
@@ -17,30 +22,52 @@ class App extends Component {
   }
 
   componentDidMount() {
-    createTexturedPlaneRenderer({image: 'UV_Grid_Sm.jpg', resolution: [1024,512], translate: [0,0,-20], scale: [1,0.5,0.5]})
+    createTexturedPlaneRenderer({image: 'UV_Grid_Sm.jpg', winWidth: 800, winHeight: 600, resolution: [1024,512], translate: [0,0,-20], scale: [1,0.5,0.5]})
     .then((ctx) => {
       // console.log('createTexturedPlaneRenderer done: ', ctx);
 
       this.ctx = ctx;
-      this.ctx.renderer.setSize(window.innerWidth, 300);
+      this.ctx.renderer.setSize(800, 600);
 
       const el = document.getElementsByClassName('three-scene')[0];
       el.appendChild(this.ctx.renderer.domElement);
 
-      // this.animate();
-      this.render3d();
-      this.renderEqui();
+      this.ctx.scene.add(this.createBackground());
+
+      if (OrbitControls) {
+        this.controls = OrbitControls(this.ctx.camera, this.ctx.renderer.domElement);
+      } else {
+        console.log('OrbitControls not available!');
+      }
+
+      this.animate();
+      // this.render3d();
+      // this.renderEqui();
     })
     .catch((err) => {
       console.log('createTexturedPlaneRenderer err:', err);
     });
   }
 
-  // animate() {
-  //   if (this.ctx === undefined) return;
-  //   requestAnimationFrame( () => this.animate() );
-  //   this.render3d();
-  // }
+  animate() {
+    if (this.ctx === undefined) return;
+    requestAnimationFrame( () => this.animate() );
+
+    if (this.controls) this.controls.update();
+    this.render3d();
+  }
+
+  createBackground() {
+    let geometry = new THREE.SphereBufferGeometry( 500, 60, 40 );
+    geometry.scale( - 1, 1, 1 );
+
+    let material = new THREE.MeshBasicMaterial( {
+      map: new THREE.TextureLoader().load( '2294472375_24a3b8ef46_o.jpg' )
+    });
+
+    let mesh = new THREE.Mesh( geometry, material );
+    return mesh;
+  }
 
   render3d() {
     if (this.ctx !== undefined) this.ctx.renderer.render(this.ctx.scene, this.ctx.camera);

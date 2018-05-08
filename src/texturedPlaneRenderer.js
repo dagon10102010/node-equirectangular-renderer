@@ -16,6 +16,7 @@ function createTexturedPlaneRenderer(opts) {
 
     if (process.browser) {
       renderer = new THREE.WebGLRenderer( { antialias: true });
+      renderer.setSize(winW, winH);
     } else {
       var Canvas = require("canvas");
       var glContext = require('gl')(1,1); //headless-gl
@@ -38,7 +39,7 @@ function createTexturedPlaneRenderer(opts) {
 
     // scene; one plane
     var scene = new THREE.Scene();
-    var geometry = new THREE.PlaneGeometry( 10, 20, 1, 1 );
+    var geometry = new THREE.PlaneGeometry( 10, 10, 1, 1 );
     var material = new THREE.MeshBasicMaterial();
     var plane = new THREE.Mesh(geometry, material );
 
