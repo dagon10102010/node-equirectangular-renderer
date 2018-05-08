@@ -1,6 +1,7 @@
 {
-  "name": "node-equirectangular-renderer",
+  "name": "equirectangular-renderer",
   "version": "0.0.0",
+  "main": "index.js",
   "description": "TODO-TODO-TODO",
   "repository": {
     "type": "git",
@@ -15,7 +16,7 @@
   "scripts": {
     "sample1": "node samples/three-scene-to-png.js",
     "sample2": "node samples/three-scene-to-equirectangular.js",
-    "sample3": "node samples/three-plane-to-equi.js",
+    "sample3": "node samples/texturedPlaneRenderer.js",
     "sample4": "node samples/three-shader.js"
   },
   "dependencies": {
