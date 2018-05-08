@@ -6,11 +6,12 @@ var THREE = require("three");
 var CubemapToEquirectangular = require('../lib/three-CubemapToEquirectangular');
 var getPixels = require("get-pixels");
 
-function createTexturedPlaneRenderingContext(opts) {
+function createTexturedPlaneRenderer(opts) {
   return new Promise(function (resolve, reject) {
     var winW = opts.winWidth || 1280; // not sure if these matter?
     var winH = opts.winHeight || 720;
     var resolution = opts.resolution || [opts.width || 4096, opts.height || 2048];
+    var imageurl = opts.image;
 
     // GL scene renderer
     var canvasGL = new Canvas(winW, winH);
@@ -57,7 +58,7 @@ function createTexturedPlaneRenderingContext(opts) {
     plane.scale.set(0.6,0.6,1);
 
     // load texture data (image) async and resolve/reject promise
-    getPixels(__dirname+"/UV_Grid_Sm.jpg", function(err, pixels) {
+    getPixels(imageurl, function(err, pixels) {
       if(err) {
         reject(err);
         return;
@@ -71,6 +72,7 @@ function createTexturedPlaneRenderingContext(opts) {
         equi: equi,
         camera: camera,
         scene: scene,
+        renderer: renderer,
         render: function() { equi.updateAndGetCanvas( camera, scene ); },
         exportImage: function(exportPath) {
           var out = fs.createWriteStream(exportPath);
@@ -84,27 +86,4 @@ function createTexturedPlaneRenderingContext(opts) {
   });
 }
 
-createTexturedPlaneRenderingContext({resolution: [1024,512], scale: [1,0.5,0.5]}).then(function(ctx) {
-  // for(var i=0; i<3; i+=1) {
-  //   ctx.update({translate: [0,0,-5*i], rotation: [0,0,i]});
-  //   ctx.render();
-  //   ctx.exportImage("./three-plane-equi-"+i+".png");
-  // }
-  var func = function(i) {
-    ctx.update({translate: [0,0,-3*(i+1)], rotation: [0,0.5*i,i*0.3]});
-    ctx.render();
-    var p = "./three-plane-equi-"+i+".png";
-    console.log('Exporting to: ', p);
-    ctx.exportImage(p);
-  }
-
-  setTimeout(function(){ func(0); }, 10);
-  setTimeout(function(){ func(1); }, 1010);
-  setTimeout(function(){ func(2); }, 2010);
-  setTimeout(function(){ func(3); }, 3010);
-  setTimeout(function(){ func(4); }, 4010);
-
-  // ctx.render();
-  // ctx.exportImage("./three-plane-equi.png");, ctx.equi.canvas);
-  // ctx.exportImage("./three-plane-equi.png");
-});
+module.exports = { createTexturedPlaneRenderer };

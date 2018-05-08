@@ -1,7 +1,9 @@
 import React, { Component } from 'react';
+import { createTexturedPlaneRenderingContext } from 'equirectangular-renderer';
 // import logo from './logo.svg';
 import './App.css';
 const THREE = require('three');
+
 
 class ThreeScene {
   constructor() {
@@ -100,16 +102,36 @@ class App extends Component {
   }
 
   componentDidMount() {
-    this.threeScene = new ThreeScene();
-    this.threeScene.animate();
-    // document.body.appendChild(this.threeScene.renderer.domElement)
-    const el = document.getElementsByClassName('three-scene')[0];
-    el.appendChild(this.threeScene.renderer.domElement);
+    // this.threeScene = new ThreeScene();
+    // this.threeScene.animate();
+    // // document.body.appendChild(this.threeScene.renderer.domElement)
+    // const el = document.getElementsByClassName('three-scene')[0];
+    // el.appendChild(this.threeScene.renderer.domElement);
+
+    createTexturedPlaneRenderingContext({image: 'UV_Grid_Sm.jpg', resolution: [1024,512], scale: [1,0.5,0.5]}).then(function(ctx) {
+      this.ctx = ctx;
+      this.ctx.renderer.setSize(window.innerWidth, 300);
+
+      const el = document.getElementsByClassName('three-scene')[0];
+      el.appendChild(this.ctx.renderer.domElement);
+    });
+  }
+
+  animate() {
+    requestAnimationFrame( () => this.animate() );
+    if (this.ctx === undefined) return;
+
+    // this.mesh.rotation.x += 0.01;
+    // this.mesh.rotation.y += 0.02;
+
+    this.ctx.renderer.render(this.ctx.scene, this.ctx.camera);
   }
 
   handleSubmit(e) {
     e.preventDefault();
-    console.log('this: ', this);
+
+    if (this.ctx)
+
     var fltstrings = this.state.posString.split(',');
     this.threeScene.mesh.position.set(parseFloat(fltstrings[0]), parseFloat(fltstrings[1]), parseFloat(fltstrings[2]));
 
