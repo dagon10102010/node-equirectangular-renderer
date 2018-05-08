@@ -14,11 +14,15 @@
   "license": "TODO-TODO-TODO",
   "scripts": {
     "sample1": "node samples/three-scene-to-png.js",
-    "sample2": "node samples/three-scene-to-equirectangular.js"
+    "sample2": "node samples/three-scene-to-equirectangular.js",
+    "sample3": "node samples/three-plane-to-equi.js",
+    "sample4": "node samples/three-shader.js"
   },
   "dependencies": {
     "canvas": "1.6.10",
+    "get-pixels": "^3.3.0",
     "gl": "^4.0.4",
+    "promise": "^8.0.1",
     "three": "^0.92.0"
   },
   "devDependencies": {}

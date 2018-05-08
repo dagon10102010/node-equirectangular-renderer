@@ -1,11 +1,9 @@
+var fs = require("fs");
+var Canvas = require("canvas");
 // Assign this to global so that the subsequent modules can extend it:
-// global.THREE = require("../lib/three.js");
 global.THREE = require("three")
 require("../lib/three-CanvasRenderer.js");
 require("../lib/three-Projector.js");
-
-var fs = require("fs");
-var Canvas = require("canvas");
 
 var w = 200;
 var h = 200;
@@ -23,7 +21,20 @@ for ( var i = 0; i < geometry.faces.length; i += 2 ) {
     geometry.faces[ i + 1 ].color.setHex( hex );
 }
 
-var material = new THREE.MeshBasicMaterial( { vertexColors: THREE.FaceColors, overdraw: 0.5 } );
+// load image from filesystem
+var imgData = fs.readFileSync(__dirname + '/UV_Grid_Sm.jpg');
+teximage = new Canvas.Image();
+teximage.src = imgData;
+
+// texture
+var texture = new THREE.Texture(teximage);
+texture.wrapS = THREE.RepeatWrapping;
+texture.wrapT = THREE.RepeatWrapping;
+// texture.repeat.set( 4, 4 );
+// texture.matrixAutoUpdate = false; // set this to false to update texture.matrix manually
+
+var material = new THREE.MeshBasicMaterial({ map: texture });
+// var material = new THREE.MeshBasicMaterial( { vertexColors: THREE.FaceColors, overdraw: 0.5 } );
 
 cube = new THREE.Mesh(geometry, material);
 cube.position.y = 150;
