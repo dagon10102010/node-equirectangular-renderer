@@ -42,7 +42,18 @@ function createTexturedPlaneRenderingContext(opts) {
     scene.add( plane );
 
     // transformations
-    plane.position.z = -5.8;
+    var updateFunc = function(options) {
+      var translate = options.translate || [0,0,0];
+      var scale = options.scale || [1,1,1];
+      var rotation = options.rotation || [0,0,0];
+      plane.position.set(translate[0], translate[1], translate[2]);
+      plane.scale.set(scale[0], scale[1], scale[2]);
+      plane.rotation.set(rotation[0], rotation[1], rotation[2]);
+    }
+
+    updateFunc(opts);
+
+    // plane.position.z = -5.8;
     plane.scale.set(0.6,0.6,1);
 
     // load texture data (image) async and resolve/reject promise
@@ -66,14 +77,34 @@ function createTexturedPlaneRenderingContext(opts) {
           var canvasStream = equi.canvas.pngStream();
           canvasStream.on("data", function (chunk) { out.write(chunk); });
           // canvasStream.on("end", function () { console.log("done"); });
-        }
+        },
+        update: updateFunc
       });
     });
   });
 }
 
-createTexturedPlaneRenderingContext({resolution: [1024,512]}).then(function(ctx) {
-  ctx.render();
+createTexturedPlaneRenderingContext({resolution: [1024,512], scale: [1,0.5,0.5]}).then(function(ctx) {
+  // for(var i=0; i<3; i+=1) {
+  //   ctx.update({translate: [0,0,-5*i], rotation: [0,0,i]});
+  //   ctx.render();
+  //   ctx.exportImage("./three-plane-equi-"+i+".png");
+  // }
+  var func = function(i) {
+    ctx.update({translate: [0,0,-3*(i+1)], rotation: [0,0.5*i,i*0.3]});
+    ctx.render();
+    var p = "./three-plane-equi-"+i+".png";
+    console.log('Exporting to: ', p);
+    ctx.exportImage(p);
+  }
+
+  setTimeout(function(){ func(0); }, 10);
+  setTimeout(function(){ func(1); }, 1010);
+  setTimeout(function(){ func(2); }, 2010);
+  setTimeout(function(){ func(3); }, 3010);
+  setTimeout(function(){ func(4); }, 4010);
+
+  // ctx.render();
   // ctx.exportImage("./three-plane-equi.png");, ctx.equi.canvas);
-  ctx.exportImage("./three-plane-equi.png");
+  // ctx.exportImage("./three-plane-equi.png");
 });
