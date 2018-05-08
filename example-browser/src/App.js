@@ -7,6 +7,7 @@ class ThreeScene {
   constructor() {
     this.camera = new THREE.PerspectiveCamera( 70, window.innerWidth / 300, 0.01, 10 );
     this.camera.position.set(0,0,0);
+    this.camera.target = new THREE.Vector3( 0, 0, 0 );
 
     this.scene = new THREE.Scene();
 
@@ -21,6 +22,13 @@ class ThreeScene {
     this.renderer.setSize( window.innerWidth, 300 );
 
     // document.body.appendChild( this.renderer.domElement );
+
+    this.lon = 0;
+    this.lat = 0;
+    document.addEventListener( 'mousedown', (e) => this.onDocumentMouseDown(e), false );
+    document.addEventListener( 'mousemove', (e) => this.onDocumentMouseMove(e), false );
+    document.addEventListener( 'mouseup', (e) => this.onDocumentMouseUp(e), false );
+    document.addEventListener( 'wheel', (e) => this.onDocumentMouseWheel(e), false );
   }
 
   animate() {
@@ -30,6 +38,48 @@ class ThreeScene {
     // this.mesh.rotation.y += 0.02;
 
     this.renderer.render( this.scene, this.camera );
+  }
+
+  onDocumentMouseDown( event ) {
+
+    event.preventDefault();
+
+    this.isUserInteracting = true;
+
+    this.onMouseDownMouseX = event.clientX;
+    this.onMouseDownMouseY = event.clientY;
+
+    this.onMouseDownLon = this.lon;
+    this.onMouseDownLat = this.lat;
+  }
+
+  onDocumentMouseMove( event ) {
+
+    if ( this.isUserInteracting === true ) {
+
+      this.lon = ( this.onMouseDownMouseX - event.clientX ) * 0.1 + this.onMouseDownLon;
+      this.lat = ( event.clientY - this.onMouseDownMouseY ) * 0.1 + this.onMouseDownLat;
+
+      let lat = Math.max( - 85, Math.min( 85, this.lat ) );
+      let phi = THREE.Math.degToRad( 90 - this.lat );
+      let theta = THREE.Math.degToRad( this.lon );
+
+      this.camera.target.set(
+        500 * Math.sin( phi ) * Math.cos( theta ),
+      	500 * Math.cos( phi ),
+      	500 * Math.sin( phi ) * Math.sin( theta ));
+      this.camera.lookAt( this.camera.target );
+    }
+  }
+
+  onDocumentMouseUp( event ) {
+    this.isUserInteracting = false;
+  }
+
+  onDocumentMouseWheel( event ) {
+    var fov = this.camera.fov + event.deltaY * 0.05;
+    this.camera.fov = THREE.Math.clamp( fov, 10, 75 );
+    this.camera.updateProjectionMatrix();
   }
 }
 
@@ -70,6 +120,11 @@ class App extends Component {
     this.threeScene.mesh.scale.set(parseFloat(fltstrings[0]), parseFloat(fltstrings[1]), parseFloat(fltstrings[2]));
   }
 
+  handleCamReset(e) {
+    e.preventDefault();
+    this.threeScene.camera.lookAt(0,0,-1);
+  }
+
   render() {
     return (
       <div className="App">
@@ -94,6 +149,7 @@ class App extends Component {
 
 
          <input type="submit" value="Submit" />
+         <input type="button" value="reset cam" onClick={(e) => this.handleCamReset(e)}/>
        </form>
 
         {/* <header className="App-header">
