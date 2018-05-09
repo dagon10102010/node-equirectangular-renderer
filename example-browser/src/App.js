@@ -22,6 +22,8 @@ class App extends Component {
   }
 
   componentDidMount() {
+
+
     createTexturedPlaneRenderer({image: 'UV_Grid_Sm.jpg', winWidth: 800, winHeight: 600, resolution: [1024,512], translate: [0,0,-20], scale: [1,0.5,0.5]})
     .then((ctx) => {
       // console.log('createTexturedPlaneRenderer done: ', ctx);
@@ -33,7 +35,21 @@ class App extends Component {
       el.appendChild(this.ctx.renderer.domElement);
       // document.getElementById('three-scene').appendChild(this.ctx.renderer.domElement);
 
-      this.ctx.scene.add(this.createBackground());
+      this.bg = this.createBackground()
+      // this.ctx.scene.add(this.bg);
+
+      this.cubegeometry = new THREE.BoxGeometry( 0.1, 0.1, 0.1 );
+      this.cubematerial = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+      this.cubemesh = new THREE.Mesh( this.cubegeometry, this.cubematerial );
+      this.cubemesh.position.set(5,0,-15);
+      this.cubemesh.rotation.set(0.5,-0.2,0);
+
+      this.cubematerial2 = new THREE.MeshBasicMaterial({ color: 0xff00ff });
+      this.cubemesh2 = new THREE.Mesh( this.cubegeometry, this.cubematerial2 );
+      this.cubemesh2.position.set(-5,0,-15);
+      this.cubemesh2.rotation.set(0.5,0.2,0);
+
+      document.addEventListener('keydown', (e) => this.onKeyDown(e));
 
       if (OrbitControls) {
         this.controls = new OrbitControls(this.ctx.camera);
@@ -52,6 +68,21 @@ class App extends Component {
     });
   }
 
+  addToScene(obj, add) {
+    if (add === undefined) add = this.ctx.scene.children.indexOf(obj) === -1;
+    if (add) { this.ctx.scene.add(obj); }
+    else { this.ctx.scene.remove(obj); }
+  }
+
+  onKeyDown(e) {
+    // console.log('keydown', e);
+
+    if (e.key === '0' && this.ctx) this.addToScene(this.ctx.plane);
+    if (e.key === '1' && this.ctx) this.addToScene(this.cubemesh);
+    if (e.key === '2' && this.ctx) this.addToScene(this.cubemesh2);
+    if (e.key === '9' && this.ctx) this.addToScene(this.bg);
+  }
+
   animate() {
     if (this.ctx === undefined) return;
     requestAnimationFrame( () => this.animate() );
@@ -60,20 +91,21 @@ class App extends Component {
     this.render3d();
   }
 
-  createBackground() {
-    let geometry = new THREE.SphereBufferGeometry( 500, 60, 40 );
+  render3d() {
+    if (this.ctx !== undefined) this.ctx.renderer.render(this.ctx.scene, this.ctx.camera);
+  }
+
+  createBackground(clr) {
+    let geometry = new THREE.SphereGeometry( 5, 60, 40 );
     geometry.scale( - 1, 1, 1 );
 
-    let material = new THREE.MeshBasicMaterial( {
-      map: new THREE.TextureLoader().load( '2294472375_24a3b8ef46_o.jpg' )
-    });
+    // let material = new THREE.MeshBasicMaterial( {
+    //   map: new THREE.TextureLoader().load( '2294472375_24a3b8ef46_o.jpg' )
+    // });
+    let material = new THREE.MeshBasicMaterial({ color: clr || 0x00ffff });
 
     let mesh = new THREE.Mesh( geometry, material );
     return mesh;
-  }
-
-  render3d() {
-    if (this.ctx !== undefined) this.ctx.renderer.render(this.ctx.scene, this.ctx.camera);
   }
 
   handleSubmit(e) {
@@ -88,7 +120,7 @@ class App extends Component {
         rotation: this.state.rotString.split(',').map(s => parseFloat(s) / 180 * Math.PI)
       });
 
-      this.render3d();
+      // this.render3d();
       this.renderEqui();
     }
   }
