@@ -6,6 +6,7 @@ import '../node_modules/react-dat-gui/build/react-dat-gui.css';
 import { createTexturedPlaneRenderer } from 'equirectangular-renderer';
 import localEqui from '../node_modules/equirectangular-renderer/lib/three-CubemapToEquirectangular';
 import './App.css';
+import ContextBlender from './ContextBlender';
 
 // apply OrbitControls 'patch' to our THREE intance, so it's available from there
 const OrbitControls = OrbitControlsPatcher(THREE);
@@ -22,7 +23,7 @@ class App extends Component {
         scaleX: 10, scaleY: 10, scaleZ: 1,
         rotateX: -88, rotateY: 7, rotateZ: -7,
         bg3d: false,
-        bg2d: false
+        bg2d: false,
       },
       equiBlobUrl: undefined,
       liveEquiDelay: 100
@@ -53,9 +54,12 @@ class App extends Component {
       document.addEventListener('keydown', (e) => this.onKeyDown(e));
 
       if (OrbitControls) {
+
         this.controls = new OrbitControls(this.ctx.camera, this.renderer.domElement);
-        // this.controls.update();
-        this.controls.target.z = -0.00001;  // for some reason the OrbitControls don't work without this
+        this.controls.update();
+        this.controls.target.z = -0.1;  // for some reason the OrbitControls don't work without this
+        this.controls.target.x = -0.2;
+
       } else {
         console.log('OrbitControls not available!');
       }
@@ -69,6 +73,8 @@ class App extends Component {
     .catch((err) => {
       console.log('createTexturedPlaneRenderer err:', err);
     });
+
+    this.layerBlender2d = document.getElementById('layerBlender2d');
   }
 
   addToScene(obj, scene, add) {
@@ -141,6 +147,15 @@ class App extends Component {
     canvas.toBlob((blob) => {
       this.setState({ equiBlobUrl: URL.createObjectURL(blob) });
     });
+
+    this.lastCanvas = canvas;
+    if (this.layerBlender2d && canvas.width) {
+      try {
+        canvas.getContext('2d').blendOnto(this.layerBlender2d.getContext('2d'), 'normal', {width: 800, height: 400});
+      } catch (err) {
+        console.log('caught error: ', err);
+      }
+    }
   }
 
   onParamsChange(params) {
@@ -186,8 +201,15 @@ class App extends Component {
           <DatBoolean path='bg3d' label='3d background' />
           <DatBoolean path='bg2d' label='2d background' />
         </DatGui>
+        <h1>Three.js 3d Scene</h1>
         <div className="three-scene"></div>
 
+        <h1>Blended Canvas layers</h1>
+        <div id="layerBlender2dWrapper">
+          <canvas id="layerBlender2d" width="2048" height="1024" />
+        </div>
+
+        <h1>Layered Images</h1>
         <div className="equi-preview" style={params.bg2d && this.bgTex ? {backgroundImage: 'url('+this.bgTex.image.src+')'} : {}}>
           {equiBlobUrl === undefined ? '' :
             <img src={equiBlobUrl} className="equi-render" alt="equirectangular" />}
