@@ -23,46 +23,41 @@ class App extends Component {
 
   componentDidMount() {
 
-    this.bgTex = new THREE.TextureLoader().load( '2294472375_24a3b8ef46_o.jpg' );
-
+    // create our own 3d scene preview renderer
     this.renderer = new THREE.WebGLRenderer( { antialias: true });
     this.renderer.setSize(800,600);
     const el = document.getElementsByClassName('three-scene')[0];
     el.appendChild(this.renderer.domElement);
 
+    // preload bg texture
+    this.bgTex = new THREE.TextureLoader().load( '2294472375_24a3b8ef46_o.jpg' );
+
     createTexturedPlaneRenderer({image: 'UV_Grid_Sm.jpg', winWidth: 800, winHeight: 600, resolution: [1024,512], translate: [0,0,-20], scale: [1,0.5,0.5]})
     .then((ctx) => {
-      // console.log('createTexturedPlaneRenderer done: ', ctx);
       this.ctx = ctx;
-      // this.ctx.renderer.setSize(800, 600);
-      // this.ctx.plane.material.depthTest=false;
       this.ctx.plane.material.side = THREE.DoubleSide;
-      // this.ctx.scene.background = this.bgTex;
-      // const el = document.getElementsByClassName('three-scene')[0];
-      // el.appendChild(this.ctx.renderer.domElement);
-      // document.getElementById('three-scene').appendChild(this.ctx.renderer.domElement);
 
-      // this.scene = new THREE.Scene();
-      // this.ctx.scene.children.forEach((obj) => this.scene.add(obj));
+      // clone scene
       this.scene = this.ctx.scene.clone();
 
-      this.bg = this.createBackground()
-      // this.scene.add(this.bg);
+      { // scene elements that can be toggle dynamically
+        this.bg = this.createBackground()
+        // this.scene.add(this.bg);
+        this.cubegeometry = new THREE.BoxGeometry( 0.1, 0.1, 0.1 );
+        this.cubematerial = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+        this.cubematerial.depthTest = false;
+        this.cubematerial.side = THREE.DoubleSide;
+        this.cubemesh = new THREE.Mesh( this.cubegeometry, this.cubematerial );
+        this.cubemesh.position.set(5,0,-15);
+        this.cubemesh.rotation.set(0.5,-0.2,0);
 
-      this.cubegeometry = new THREE.BoxGeometry( 0.1, 0.1, 0.1 );
-      this.cubematerial = new THREE.MeshBasicMaterial({ color: 0xffff00 });
-      this.cubematerial.depthTest = false;
-      this.cubematerial.side = THREE.DoubleSide;
-      this.cubemesh = new THREE.Mesh( this.cubegeometry, this.cubematerial );
-      this.cubemesh.position.set(5,0,-15);
-      this.cubemesh.rotation.set(0.5,-0.2,0);
-
-      this.cubematerial2 = new THREE.MeshBasicMaterial({ color: 0xff00ff });
-      this.cubematerial2.depthTest = false;
-      this.cubematerial2.side = THREE.DoubleSide;
-      this.cubemesh2 = new THREE.Mesh( this.cubegeometry, this.cubematerial2 );
-      this.cubemesh2.position.set(-5,0,-15);
-      this.cubemesh2.rotation.set(0.5,0.2,0);
+        this.cubematerial2 = new THREE.MeshBasicMaterial({ color: 0xff00ff });
+        this.cubematerial2.depthTest = false;
+        this.cubematerial2.side = THREE.DoubleSide;
+        this.cubemesh2 = new THREE.Mesh( this.cubegeometry, this.cubematerial2 );
+        this.cubemesh2.position.set(-5,0,-15);
+        this.cubemesh2.rotation.set(0.5,0.2,0);
+      }
 
       document.addEventListener('keydown', (e) => this.onKeyDown(e));
 
