@@ -1,198 +1,197 @@
 import React, { Component } from 'react';
-import './App.css';
-// import EquiRenderer from 'equirectangular-renderer';
-// import createTexturedPlaneRenderer from './texturedPlaneRenderer';
+import * as THREE from 'three';
+import OrbitControlsPatcher from 'three-orbit-controls';
+import DatGui, { DatFolder, DatNumber, DatBoolean /*, DatButton, DatString */ } from 'react-dat-gui';
+import '../node_modules/react-dat-gui/build/react-dat-gui.css';
 import { createTexturedPlaneRenderer } from 'equirectangular-renderer';
+import localEqui from '../node_modules/equirectangular-renderer/lib/three-CubemapToEquirectangular';
+import './App.css';
 
-const THREE = require('three');
-
-
-class ThreeScene {
-  constructor() {
-    this.camera = new THREE.PerspectiveCamera( 70, window.innerWidth / 300, 0.01, 10 );
-    this.camera.position.set(0,0,0);
-    this.camera.target = new THREE.Vector3( 0, 0, 0 );
-
-    this.scene = new THREE.Scene();
-
-    this.geometry = new THREE.BoxGeometry( 0.2, 0.2, 0.2 );
-    this.material = new THREE.MeshNormalMaterial();
-
-    this.mesh = new THREE.Mesh( this.geometry, this.material );
-    this.mesh.position.set(0,0,-1);
-    this.scene.add( this.mesh );
-
-    this.renderer = new THREE.WebGLRenderer( { antialias: true } );
-    this.renderer.setSize( window.innerWidth, 300 );
-
-    // document.body.appendChild( this.renderer.domElement );
-
-    this.lon = 0;
-    this.lat = 0;
-    document.addEventListener( 'mousedown', (e) => this.onDocumentMouseDown(e), false );
-    document.addEventListener( 'mousemove', (e) => this.onDocumentMouseMove(e), false );
-    document.addEventListener( 'mouseup', (e) => this.onDocumentMouseUp(e), false );
-    document.addEventListener( 'wheel', (e) => this.onDocumentMouseWheel(e), false );
-  }
-
-  animate() {
-    requestAnimationFrame( () => this.animate() );
-
-    // this.mesh.rotation.x += 0.01;
-    // this.mesh.rotation.y += 0.02;
-
-    this.renderer.render( this.scene, this.camera );
-  }
-
-  onDocumentMouseDown( event ) {
-
-    event.preventDefault();
-
-    this.isUserInteracting = true;
-
-    this.onMouseDownMouseX = event.clientX;
-    this.onMouseDownMouseY = event.clientY;
-
-    this.onMouseDownLon = this.lon;
-    this.onMouseDownLat = this.lat;
-  }
-
-  onDocumentMouseMove( event ) {
-
-    if ( this.isUserInteracting === true ) {
-
-      this.lon = ( this.onMouseDownMouseX - event.clientX ) * 0.1 + this.onMouseDownLon;
-      this.lat = ( event.clientY - this.onMouseDownMouseY ) * 0.1 + this.onMouseDownLat;
-
-      let lat = Math.max( - 85, Math.min( 85, this.lat ) );
-      let phi = THREE.Math.degToRad( 90 - this.lat );
-      let theta = THREE.Math.degToRad( this.lon );
-
-      this.camera.target.set(
-        500 * Math.sin( phi ) * Math.cos( theta ),
-      	500 * Math.cos( phi ),
-      	500 * Math.sin( phi ) * Math.sin( theta ));
-      this.camera.lookAt( this.camera.target );
-    }
-  }
-
-  onDocumentMouseUp( event ) {
-    this.isUserInteracting = false;
-  }
-
-  onDocumentMouseWheel( event ) {
-    var fov = this.camera.fov + event.deltaY * 0.05;
-    this.camera.fov = THREE.Math.clamp( fov, 10, 75 );
-    this.camera.updateProjectionMatrix();
-  }
-}
+// apply OrbitControls 'patch' to our THREE intance, so it's available from there
+const OrbitControls = OrbitControlsPatcher(THREE);
 
 class App extends Component {
 
-  // state: {
-  //   translate: ''
-  // }
-
   constructor(opts) {
     super(opts);
+    window.appp = this;
 
     this.state = {
-      posString: '0,0,-20',
-      scaleString: '1,1,1',
-      rotString: '0,0,0'
+      params: {
+        translateX: -90, translateY: -99, translateZ: -5.6,
+        scaleX: 10, scaleY: 10, scaleZ: 1,
+        rotateX: -88, rotateY: 7, rotateZ: -7,
+        bg3d: false,
+        bg2d: false
+      },
+      equiBlobUrl: undefined,
+      liveEquiDelay: 100
     };
   }
 
   componentDidMount() {
-    // this.threeScene = new ThreeScene();
-    // this.threeScene.animate();
-    // // document.body.appendChild(this.threeScene.renderer.domElement)
-    // const el = document.getElementsByClassName('three-scene')[0];
-    // el.appendChild(this.threeScene.renderer.domElement);
 
-    createTexturedPlaneRenderer({image: 'UV_Grid_Sm.jpg', resolution: [1024,512], translate: [0,0,-20], scale: [1,0.5,0.5]})
+    // create our own 3d scene preview renderer
+    this.renderer = new THREE.WebGLRenderer( { antialias: true });
+    this.renderer.setSize(800,600);
+    const el = document.getElementsByClassName('three-scene')[0];
+    el.appendChild(this.renderer.domElement);
+
+    // preload bg texture
+    this.bgTex = new THREE.TextureLoader().load( '2294472375_24a3b8ef46_o.jpg' );
+
+    createTexturedPlaneRenderer({image: 'UV_Grid_Sm.jpg', winWidth: 800, winHeight: 600, resolution: [1024,512], translate: [0,0,-20], scale: [1,0.5,0.5]})
     .then((ctx) => {
-      // console.log('createTexturedPlaneRenderer done: ', ctx);
-
       this.ctx = ctx;
-      this.ctx.renderer.setSize(window.innerWidth, 300);
+      this.ctx.plane.material.side = THREE.DoubleSide;
 
-      const el = document.getElementsByClassName('three-scene')[0];
-      el.appendChild(this.ctx.renderer.domElement);
+      // clone scene
+      this.scene = this.ctx.scene.clone();
+      this.bg = this.createBackground();
+      this.plane = this.scene.children[0]; // for now
+
+      document.addEventListener('keydown', (e) => this.onKeyDown(e));
+
+      if (OrbitControls) {
+        this.controls = new OrbitControls(this.ctx.camera, this.renderer.domElement);
+        // this.controls.update();
+        this.controls.target.z = -0.00001;  // for some reason the OrbitControls don't work without this
+      } else {
+        console.log('OrbitControls not available!');
+      }
 
       this.animate();
+
+      this.onParamsChange(this.state.params);
+      // this.render3d();
+      // this.renderEqui();
     })
     .catch((err) => {
       console.log('createTexturedPlaneRenderer err:', err);
     });
   }
 
-  animate() {
-    requestAnimationFrame( () => this.animate() );
-    if (this.ctx === undefined) return;
-
-    // this.mesh.rotation.x += 0.01;
-    // this.mesh.rotation.y += 0.02;
-
-    this.ctx.renderer.render(this.ctx.scene, this.ctx.camera);
+  addToScene(obj, scene, add) {
+    if (scene === undefined) scene = this.scene;
+    if (add === undefined) add = scene.children.indexOf(obj) === -1;
+    if (add) { scene.add(obj); }
+    else { scene.remove(obj); }
   }
 
-  handleSubmit(e) {
-    e.preventDefault();
+  onKeyDown(e) {
+    // console.log('keydown', e);
 
-    if (this.ctx) {
-      // the generated context has an update convenience method which takes
-      // transformation options and applies them to the plane
-      this.ctx.update({
-        translate: this.state.posString.split(',').map(s => parseFloat(s)),
-        scale: this.state.scaleString.split(',').map(s => parseFloat(s)),
-        rotation: this.state.rotString.split(',').map(s => parseFloat(s) / 180 * Math.PI)
-      });
+    // if (e.key === '0' && this.ctx) this.addToScene(this.ctx.plane);
+    if (e.key === '9' && this.ctx) {
+      const { params } = this.state;
+      params.bg3d = !params.bg3d;
+      this.onParamsChange(params);
+    }
+
+    if (e.key === '/') {
+      const { params } = this.state;
+      params.bg2d = !params.bg2d;
+      this.onParamsChange(params);
     }
   }
 
-  handleCamReset(e) {
-    e.preventDefault();
-    this.threeScene.camera.lookAt(0,0,-1);
+  animate() {
+    if (this.ctx === undefined) return;
+    requestAnimationFrame( () => this.animate() );
+
+    if (this.controls) this.controls.update();
+    this.render3d();
+  }
+
+  render3d() {
+    if (this.ctx !== undefined) this.renderer.render(this.scene, this.ctx.camera);
+
+    // if (this.ctx !== undefined) this.renderer.render(this.ctx.scene, this.ctx.camera);
+    // if (this.ctx !== undefined) this.renderer.render(this.scene, this.ctx.camera);
+  }
+
+  createBackground(clr) {
+    let geometry = new THREE.SphereBufferGeometry( 5000, 60, 40 );
+    geometry.scale( -1, 1, 1 );
+
+    let material = new THREE.MeshBasicMaterial( {
+      map: this.bgTex //new THREE.TextureLoader().load( '2294472375_24a3b8ef46_o.jpg' )
+    });
+    // let material = new THREE.MeshBasicMaterial({ color: clr || 0x00ffff });
+    // material.depthTest = false;
+    material.side = THREE.DoubleSide;
+    let mesh = new THREE.Mesh( geometry, material );
+    return mesh;
+  }
+
+  renderEqui(e) {
+    if (e) e.preventDefault();
+
+    if (this.ctx === undefined) {
+      console.log('rendering context not initialized yet');
+      return;
+    }
+
+    if (this.equi === undefined)
+      this.equi = new localEqui( this.renderer, true, {width: 2048, height: 1024} );
+
+    var canvas = this.equi.updateAndGetCanvas(this.ctx.camera, this.scene);
+    // this.ctx.render();
+    // this.ctx.equi.canvas.toBlob((blob) => {
+    canvas.toBlob((blob) => {
+      this.setState({ equiBlobUrl: URL.createObjectURL(blob) });
+    });
+  }
+
+  onParamsChange(params) {
+    if (this.ctx) {
+      // console.log('Updating plane pos: ', [params.translateX, params.translateY, params.translateZ]);
+      // this.ctx.update({
+        // translate: [params.translateX, params.translateY, params.translateZ]
+      // });
+      this.plane.position.set(params.translateX, params.translateY, params.translateZ);
+      this.plane.scale.set(params.scaleX, params.scaleY, params.scaleZ);
+      this.plane.rotation.set(params.rotateX/180*Math.PI, params.rotateY/180*Math.PI, params.rotateZ/180*Math.PI);
+
+    }
+
+    this.addToScene(this.bg, undefined, params.bg3d);
+
+    this.setState({ params });
+
+    if (this.liveEquiTimeout !== undefined) clearTimeout(this.liveEquiTimeout);
+    this.liveEquiTimeout = setTimeout(() => this.renderEqui(), this.state.liveEquiDelay);
   }
 
   render() {
+    const { equiBlobUrl, params } = this.state;
+
     return (
       <div className="App">
+        <DatGui data={params} onUpdate={(params) => this.onParamsChange(params)}>
+          {/* <DatFolder title="plane transform"> */}
+            <DatNumber path='translateX' label='translate-x' min={-1000} max={1000} step={0.1} />
+            <DatNumber path='translateY' label='translate-y' min={-1000} max={1000} step={0.1} />
+            <DatNumber path='translateZ' label='translate-z' min={-1000} max={1000} step={0.1} />
+
+            <DatNumber path='scaleX' label='scale-x' min={-100} max={100} step={0.01} />
+            <DatNumber path='scaleY' label='scale-y' min={-100} max={100} step={0.01} />
+            {/* <DatNumber path='scaleZ' label='scale-z' min={-10} max={10} step={0.01} /> */}
+
+            <DatNumber path='rotateX' label='rotate-x' min={-360} max={360} step={1} />
+            <DatNumber path='rotateY' label='rotate-y' min={-360} max={360} step={1} />
+            <DatNumber path='rotateZ' label='rotate-z' min={-360} max={360} step={1} />
+          {/* </DatFolder> */}
+
+          <DatBoolean path='bg3d' label='3d background' />
+          <DatBoolean path='bg2d' label='2d background' />
+        </DatGui>
         <div className="three-scene"></div>
 
-        {/* transform parametes */}
-        <form onSubmit={(e) => this.handleSubmit(e)}>
-         <label>
-           Position:
-           <input type="text" value={this.state.posString} onChange={(e) => this.setState({ posString: e.target.value }) } />
-         </label>
-
-         <label>
-           Scale:
-           <input type="text" value={this.state.scaleString} onChange={(e) => this.setState({ scaleString: e.target.value }) } />
-         </label>
-
-         <label>
-           Rotation (deg):
-           <input type="text" value={this.state.rotString} onChange={(e) => this.setState({ rotString: e.target.value }) } />
-         </label>
-
-         <input type="submit" value="Submit" />
-         <input type="button" value="reset cam" onClick={(e) => this.handleCamReset(e)}/>
-       </form>
-
-        {/* <header className="App-header">
-          <img src={logo} className="App-logo" alt="logo" />
-        </header>
-        <p className="App-intro">
-          To get started, edit <code>src/App.js</code> and save to reload.
-        </p>
-        <hr/>
-        <p>
-          The texture (a jpg file loaded as a simple img HTML tag):
-          <img src="UV_Grid_Sm.jpg" alt="texture" />
-        </p> */}
+        <div className="equi-preview" style={params.bg2d && this.bgTex ? {backgroundImage: 'url('+this.bgTex.image.src+')'} : {}}>
+          {equiBlobUrl === undefined ? '' :
+            <img src={equiBlobUrl} className="equi-render" alt="equirectangular" />}
+        </div>
       </div>
     );
   }
