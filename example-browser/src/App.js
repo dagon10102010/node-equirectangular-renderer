@@ -1,11 +1,11 @@
 import React, { Component } from 'react';
 import * as THREE from 'three';
 import OrbitControlsPatcher from 'three-orbit-controls';
-import DatGui, { DatFolder, DatBoolean, DatButton, DatNumber, DatString } from 'react-dat-gui';
+import DatGui, { DatFolder, DatNumber, DatBoolean /*, DatButton, DatString */ } from 'react-dat-gui';
 import '../node_modules/react-dat-gui/build/react-dat-gui.css';
-import './App.css';
 import { createTexturedPlaneRenderer } from 'equirectangular-renderer';
-import localEqui from './localEqui';
+import localEqui from '../node_modules/equirectangular-renderer/lib/three-CubemapToEquirectangular';
+import './App.css';
 
 // apply OrbitControls 'patch' to our THREE intance, so it's available from there
 const OrbitControls = OrbitControlsPatcher(THREE);
@@ -18,14 +18,13 @@ class App extends Component {
 
     this.state = {
       params: {
-        translateX: 0, translateY: 0, translateZ: -20,
-        scaleX: 1, scaleY: 1, scaleZ: 1,
-        rotateX: 0, rotateY: 0, rotateZ: 0,
+        translateX: -90, translateY: -99, translateZ: -5.6,
+        scaleX: 10, scaleY: 10, scaleZ: 1,
+        rotateX: -88, rotateY: 7, rotateZ: -7,
         bg3d: false,
         bg2d: false
       },
       equiBlobUrl: undefined,
-      showEquiBg: false,
       liveEquiDelay: 100
     };
   }
@@ -48,26 +47,8 @@ class App extends Component {
 
       // clone scene
       this.scene = this.ctx.scene.clone();
+      this.bg = this.createBackground();
       this.plane = this.scene.children[0]; // for now
-
-      { // scene elements that can be toggle dynamically
-        this.bg = this.createBackground()
-        // this.scene.add(this.bg);
-        this.cubegeometry = new THREE.BoxGeometry( 0.1, 0.1, 0.1 );
-        this.cubematerial = new THREE.MeshBasicMaterial({ color: 0xffff00 });
-        this.cubematerial.depthTest = false;
-        this.cubematerial.side = THREE.DoubleSide;
-        this.cubemesh = new THREE.Mesh( this.cubegeometry, this.cubematerial );
-        this.cubemesh.position.set(5,0,-15);
-        this.cubemesh.rotation.set(0.5,-0.2,0);
-
-        this.cubematerial2 = new THREE.MeshBasicMaterial({ color: 0xff00ff });
-        this.cubematerial2.depthTest = false;
-        this.cubematerial2.side = THREE.DoubleSide;
-        this.cubemesh2 = new THREE.Mesh( this.cubegeometry, this.cubematerial2 );
-        this.cubemesh2.position.set(-5,0,-15);
-        this.cubemesh2.rotation.set(0.5,0.2,0);
-      }
 
       document.addEventListener('keydown', (e) => this.onKeyDown(e));
 
@@ -80,8 +61,10 @@ class App extends Component {
       }
 
       this.animate();
+
+      this.onParamsChange(this.state.params);
       // this.render3d();
-      this.renderEqui();
+      // this.renderEqui();
     })
     .catch((err) => {
       console.log('createTexturedPlaneRenderer err:', err);
@@ -99,11 +82,17 @@ class App extends Component {
     // console.log('keydown', e);
 
     // if (e.key === '0' && this.ctx) this.addToScene(this.ctx.plane);
-    if (e.key === '1' && this.ctx) this.addToScene(this.cubemesh);
-    if (e.key === '2' && this.ctx) this.addToScene(this.cubemesh2);
-    if (e.key === '9' && this.ctx) this.addToScene(this.bg);
+    if (e.key === '9' && this.ctx) {
+      const { params } = this.state;
+      params.bg3d = !params.bg3d;
+      this.onParamsChange(params);
+    }
 
-    if (e.key === '/') this.setState({ showEquiBg: !this.state.showEquiBg });
+    if (e.key === '/') {
+      const { params } = this.state;
+      params.bg2d = !params.bg2d;
+      this.onParamsChange(params);
+    }
   }
 
   animate() {
@@ -175,24 +164,24 @@ class App extends Component {
   }
 
   render() {
-    const { equiBlobUrl, showEquiBg, params } = this.state;
+    const { equiBlobUrl, params } = this.state;
 
     return (
       <div className="App">
         <DatGui data={params} onUpdate={(params) => this.onParamsChange(params)}>
-          <DatFolder title="plane transform">
-            <DatNumber path='translateX' label='translate-x' min={-99} max={99} step={0.1} />
-            <DatNumber path='translateY' label='translate-y' min={-99} max={99} step={0.1} />
-            <DatNumber path='translateZ' label='translate-z' min={-99} max={99} step={0.1} />
+          {/* <DatFolder title="plane transform"> */}
+            <DatNumber path='translateX' label='translate-x' min={-1000} max={1000} step={0.1} />
+            <DatNumber path='translateY' label='translate-y' min={-1000} max={1000} step={0.1} />
+            <DatNumber path='translateZ' label='translate-z' min={-1000} max={1000} step={0.1} />
 
-            <DatNumber path='scaleX' label='scale-x' min={-10} max={10} step={0.01} />
-            <DatNumber path='scaleY' label='scale-y' min={-10} max={10} step={0.01} />
+            <DatNumber path='scaleX' label='scale-x' min={-100} max={100} step={0.01} />
+            <DatNumber path='scaleY' label='scale-y' min={-100} max={100} step={0.01} />
             {/* <DatNumber path='scaleZ' label='scale-z' min={-10} max={10} step={0.01} /> */}
 
             <DatNumber path='rotateX' label='rotate-x' min={-360} max={360} step={1} />
             <DatNumber path='rotateY' label='rotate-y' min={-360} max={360} step={1} />
             <DatNumber path='rotateZ' label='rotate-z' min={-360} max={360} step={1} />
-          </DatFolder>
+          {/* </DatFolder> */}
 
           <DatBoolean path='bg3d' label='3d background' />
           <DatBoolean path='bg2d' label='2d background' />
