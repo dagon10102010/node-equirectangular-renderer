@@ -15,6 +15,7 @@ class App extends Component {
 
     this.state = {
       equiBlobUrl: undefined,
+      showEquiBg: false,
       posString: '0,0,-20',
       scaleString: '1,1,1',
       rotString: '0,0,0'
@@ -92,6 +93,8 @@ class App extends Component {
     if (e.key === '1' && this.ctx) this.addToScene(this.cubemesh);
     if (e.key === '2' && this.ctx) this.addToScene(this.cubemesh2);
     if (e.key === '9' && this.ctx) this.addToScene(this.bg);
+
+    if (e.key === '/') this.setState({ showEquiBg: !this.state.showEquiBg });
   }
 
   animate() {
@@ -104,11 +107,14 @@ class App extends Component {
 
   render3d() {
     if (this.ctx !== undefined) this.renderer.render(this.scene, this.ctx.camera);
+
+    // if (this.ctx !== undefined) this.renderer.render(this.ctx.scene, this.ctx.camera);
+    // if (this.ctx !== undefined) this.renderer.render(this.scene, this.ctx.camera);
   }
 
   createBackground(clr) {
     let geometry = new THREE.SphereBufferGeometry( 5000, 60, 40 );
-    // geometry.scale( -1, 1, 1 );
+    geometry.scale( -1, 1, 1 );
 
     let material = new THREE.MeshBasicMaterial( {
       map: this.bgTex //new THREE.TextureLoader().load( '2294472375_24a3b8ef46_o.jpg' )
@@ -153,7 +159,7 @@ class App extends Component {
   }
 
   render() {
-    const { equiBlobUrl } = this.state;
+    const { equiBlobUrl, showEquiBg } = this.state;
     return (
       <div className="App">
         <div className="three-scene"></div>
@@ -177,10 +183,12 @@ class App extends Component {
 
           <input type="submit" value="Submit" />
           <input type="button" value="render equirectangular" onClick={(e) => this.renderEqui(e)}/>
-      </form>
+        </form>
 
-        {equiBlobUrl === undefined ? '' :
-          <img src={equiBlobUrl} className="Equi-preview" alt="equirectangular" />}
+        <div className="equi-preview" style={showEquiBg ? {backgroundImage: 'url('+this.bgTex.image.src+')'} : {}}>
+          {equiBlobUrl === undefined ? '' :
+            <img src={equiBlobUrl} className="equi-render" alt="equirectangular" />}
+        </div>
       </div>
     );
   }
