@@ -12,7 +12,6 @@ function createTexturedPlaneRenderer(opts) {
     var imageurl = opts.image;
 
     var renderer;
-    var canvasEqui;
 
     if (process.browser) {
       renderer = new THREE.WebGLRenderer( { antialias: true });
@@ -25,12 +24,10 @@ function createTexturedPlaneRenderer(opts) {
       var canvasGL = new Canvas(winW, winH);
       canvasGL.addEventListener = function(event, func, bind_) {}; // mock function to avoid errors inside THREE.WebGlRenderer()
       renderer = new THREE.WebGLRenderer( { context: glContext, antialias: true, canvas: canvasGL });
-
-      canvasEqui = new Canvas(resolution[0], resolution[1]);
     }
 
     // Equirectangular renderer
-    var equi = new CubemapToEquirectangular( renderer, true, {canvas: canvasEqui, width: resolution[0], height: resolution[1]} );
+    var equi = new CubemapToEquirectangular( renderer, true, {width: resolution[0], height: resolution[1]} );
 
     // camera
     var camera = new THREE.PerspectiveCamera( 70, winW / winH, 1, 10000 );
@@ -83,6 +80,7 @@ function createTexturedPlaneRenderer(opts) {
         camera: camera,
         scene: scene,
         renderer: renderer,
+        plane: plane,
 
         render: function() { equi.updateAndGetCanvas( camera, scene ); },
 

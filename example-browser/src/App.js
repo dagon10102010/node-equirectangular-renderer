@@ -1,8 +1,11 @@
 import React, { Component } from 'react';
 import * as THREE from 'three';
 import OrbitControlsPatcher from 'three-orbit-controls';
+import DatGui, { DatFolder, DatBoolean, DatButton, DatNumber, DatString } from 'react-dat-gui';
+import '../node_modules/react-dat-gui/build/react-dat-gui.css';
 import './App.css';
 import { createTexturedPlaneRenderer } from 'equirectangular-renderer';
+import localEqui from './localEqui';
 
 // apply OrbitControls 'patch' to our THREE intance, so it's available from there
 const OrbitControls = OrbitControlsPatcher(THREE);
@@ -14,11 +17,16 @@ class App extends Component {
     window.appp = this;
 
     this.state = {
+      params: {
+        translateX: 0, translateY: 0, translateZ: -20,
+        scaleX: 1, scaleY: 1, scaleZ: 1,
+        rotateX: 0, rotateY: 0, rotateZ: 0,
+        bg3d: false,
+        bg2d: false
+      },
       equiBlobUrl: undefined,
       showEquiBg: false,
-      posString: '0,0,-20',
-      scaleString: '1,1,1',
-      rotString: '0,0,0'
+      liveEquiDelay: 100
     };
   }
 
@@ -40,6 +48,7 @@ class App extends Component {
 
       // clone scene
       this.scene = this.ctx.scene.clone();
+      this.plane = this.scene.children[0]; // for now
 
       { // scene elements that can be toggle dynamically
         this.bg = this.createBackground()
@@ -63,7 +72,7 @@ class App extends Component {
       document.addEventListener('keydown', (e) => this.onKeyDown(e));
 
       if (OrbitControls) {
-        this.controls = new OrbitControls(this.ctx.camera);
+        this.controls = new OrbitControls(this.ctx.camera, this.renderer.domElement);
         // this.controls.update();
         this.controls.target.z = -0.00001;  // for some reason the OrbitControls don't work without this
       } else {
@@ -72,7 +81,7 @@ class App extends Component {
 
       this.animate();
       // this.render3d();
-      // this.renderEqui();
+      this.renderEqui();
     })
     .catch((err) => {
       console.log('createTexturedPlaneRenderer err:', err);
@@ -126,23 +135,6 @@ class App extends Component {
     return mesh;
   }
 
-  handleSubmit(e) {
-    if (e) e.preventDefault();
-
-    if (this.ctx) {
-      // the generated context has an update convenience method which takes
-      // transformation options and applies them to the plane
-      this.ctx.update({
-        translate: this.state.posString.split(',').map(s => parseFloat(s)),
-        scale: this.state.scaleString.split(',').map(s => parseFloat(s)),
-        rotation: this.state.rotString.split(',').map(s => parseFloat(s) / 180 * Math.PI)
-      });
-
-      // this.render3d();
-      this.renderEqui();
-    }
-  }
-
   renderEqui(e) {
     if (e) e.preventDefault();
 
@@ -151,41 +143,63 @@ class App extends Component {
       return;
     }
 
-    this.ctx.render();
+    if (this.equi === undefined)
+      this.equi = new localEqui( this.renderer, true, {width: 2048, height: 1024} );
 
-    this.ctx.equi.canvas.toBlob((blob) => {
+    var canvas = this.equi.updateAndGetCanvas(this.ctx.camera, this.scene);
+    // this.ctx.render();
+    // this.ctx.equi.canvas.toBlob((blob) => {
+    canvas.toBlob((blob) => {
       this.setState({ equiBlobUrl: URL.createObjectURL(blob) });
     });
   }
 
+  onParamsChange(params) {
+    if (this.ctx) {
+      // console.log('Updating plane pos: ', [params.translateX, params.translateY, params.translateZ]);
+      // this.ctx.update({
+        // translate: [params.translateX, params.translateY, params.translateZ]
+      // });
+      this.plane.position.set(params.translateX, params.translateY, params.translateZ);
+      this.plane.scale.set(params.scaleX, params.scaleY, params.scaleZ);
+      this.plane.rotation.set(params.rotateX/180*Math.PI, params.rotateY/180*Math.PI, params.rotateZ/180*Math.PI);
+
+    }
+
+    this.addToScene(this.bg, undefined, params.bg3d);
+
+    this.setState({ params });
+
+    if (this.liveEquiTimeout !== undefined) clearTimeout(this.liveEquiTimeout);
+    this.liveEquiTimeout = setTimeout(() => this.renderEqui(), this.state.liveEquiDelay);
+  }
+
   render() {
-    const { equiBlobUrl, showEquiBg } = this.state;
+    const { equiBlobUrl, showEquiBg, params } = this.state;
+
     return (
       <div className="App">
+        <DatGui data={params} onUpdate={(params) => this.onParamsChange(params)}>
+          <DatFolder title="plane transform">
+            <DatNumber path='translateX' label='translate-x' min={-99} max={99} step={0.1} />
+            <DatNumber path='translateY' label='translate-y' min={-99} max={99} step={0.1} />
+            <DatNumber path='translateZ' label='translate-z' min={-99} max={99} step={0.1} />
+
+            <DatNumber path='scaleX' label='scale-x' min={-10} max={10} step={0.01} />
+            <DatNumber path='scaleY' label='scale-y' min={-10} max={10} step={0.01} />
+            {/* <DatNumber path='scaleZ' label='scale-z' min={-10} max={10} step={0.01} /> */}
+
+            <DatNumber path='rotateX' label='rotate-x' min={-360} max={360} step={1} />
+            <DatNumber path='rotateY' label='rotate-y' min={-360} max={360} step={1} />
+            <DatNumber path='rotateZ' label='rotate-z' min={-360} max={360} step={1} />
+          </DatFolder>
+
+          <DatBoolean path='bg3d' label='3d background' />
+          <DatBoolean path='bg2d' label='2d background' />
+        </DatGui>
         <div className="three-scene"></div>
 
-        {/* transform parameters form */}
-        <form onSubmit={(e) => this.handleSubmit(e)}>
-          <label>
-            Position:
-            <input type="text" value={this.state.posString} onChange={(e) => this.setState({ posString: e.target.value }) } />
-          </label>
-
-          <label>
-            Scale:
-            <input type="text" value={this.state.scaleString} onChange={(e) => this.setState({ scaleString: e.target.value }) } />
-          </label>
-
-          <label>
-            Rotation (deg):
-            <input type="text" value={this.state.rotString} onChange={(e) => this.setState({ rotString: e.target.value }) } />
-          </label>
-
-          <input type="submit" value="Submit" />
-          <input type="button" value="render equirectangular" onClick={(e) => this.renderEqui(e)}/>
-        </form>
-
-        <div className="equi-preview" style={showEquiBg ? {backgroundImage: 'url('+this.bgTex.image.src+')'} : {}}>
+        <div className="equi-preview" style={params.bg2d && this.bgTex ? {backgroundImage: 'url('+this.bgTex.image.src+')'} : {}}>
           {equiBlobUrl === undefined ? '' :
             <img src={equiBlobUrl} className="equi-render" alt="equirectangular" />}
         </div>
