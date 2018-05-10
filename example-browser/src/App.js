@@ -26,6 +26,7 @@ class App extends Component {
         bg2d: false,
         canvasBG: true,
         canvasWindowMask: true,
+        canvasShadows: true
       },
       equiBlobUrl: undefined,
       liveEquiDelay: 100
@@ -43,6 +44,7 @@ class App extends Component {
     // preload bg texture
     this.bgTex = new THREE.TextureLoader().load( '2294472375_24a3b8ef46_o.jpg' );
     this.windowMaskTex = new THREE.TextureLoader().load( 'window_mask.jpg' );
+    this.windowShadowsTex = new THREE.TextureLoader().load( 'window_shadows.jpg' );
 
     createTexturedPlaneRenderer({image: 'UV_Grid_Sm.jpg', winWidth: 800, winHeight: 600, resolution: [1024,512], translate: [0,0,-20], scale: [1,0.5,0.5]})
     .then((ctx) => {
@@ -166,37 +168,40 @@ class App extends Component {
       if (this.bgTex && this.state.params.canvasBG === true)
         target2d.drawImage(this.bgTex.image, 0, 0, this.layerBlender2d.width, this.layerBlender2d.height);
 
+      var fbo = document.getElementById('fbo');
+      var fbo_2d = fbo.getContext('2d');
+      var fbo2 = document.getElementById('fbo2');
+      var fbo2_2d = fbo2.getContext('2d');
+      var fbo3 = document.getElementById('fbo3');
+      var fbo3_2d = fbo3.getContext('2d');
+
+      console.log('clearing fbo...');
+      fbo_2d.clearRect(0, 0, fbo.width, fbo.height);
+
+      console.log('drawing material plane to fbo2...');
+      canvas.getContext('2d').blendOnto(fbo_2d, 'normal');
+
+      // window shadows
+      if (this.state.params.canvasShadows) {
+        console.log('drawing window shadows to fbo...');
+        fbo3_2d.drawImage(this.windowShadowsTex.image, 0, 0, fbo3.width, fbo3.height);
+
+        console.log('blending shadows to masked material plane...');
+        fbo3_2d.blendOnto(fbo_2d, 'subtract');
+      }
+
       // window mask
       if (this.windowMaskTex && this.state.params.canvasWindowMask) {
-        var fbo = document.getElementById('fbo');
-        var fbo_2d = fbo.getContext('2d');
-        var fbo2 = document.getElementById('fbo2');
-        var fbo2_2d = fbo2.getContext('2d');
-
-        console.log('clearing fbo...');
-        fbo_2d.clearRect(0, 0, fbo.width, fbo.height);
-
-        console.log('drawing material plane to fbo2...');
-        canvas.getContext('2d').blendOnto(fbo_2d, 'normal');
-
         console.log('drawing window mask to fbo...');
         fbo2_2d.drawImage(this.windowMaskTex.image, 0, 0, fbo2.width, fbo2.height);
 
         console.log('blending window mask onto material plane...');
         fbo2_2d.blendOnto(fbo_2d, 'alphaMask');
-
-        console.log('blending masked material plane onto background...');
-        fbo_2d.blendOnto(target2d, 'normal');
-      } else {
-
-        // dynamically rendered material plane
-        try {
-          canvas.getContext('2d').blendOnto(target2d, 'normal');
-        } catch (err) {
-          console.log('caught error while blending: ', err);
-        }
-
       }
+
+      // draw to target
+      console.log('blending masked material plane onto background...');
+      fbo_2d.blendOnto(target2d, 'normal');
     }
   }
 
@@ -239,10 +244,11 @@ class App extends Component {
             <DatNumber path='rotateY' label='rotate-y' min={-360} max={360} step={1} />
             <DatNumber path='rotateZ' label='rotate-z' min={-360} max={360} step={1} />
 
-            <DatFolder title="canvas layer blender">
+            {/* <DatFolder title="canvas layer blender"> */}
               <DatBoolean path='canvasBG' label='background' />
               <DatBoolean path='canvasWindowMask' label='window mask' />
-            </DatFolder>
+              <DatBoolean path='canvasShadows' label='window shadows' />
+            {/* </DatFolder> */}
 
           <DatBoolean path='bg3d' label='3d background' />
           <DatBoolean path='bg2d' label='2d background' />
@@ -250,18 +256,12 @@ class App extends Component {
         <h1>Three.js 3d Scene</h1>
         <div className="three-scene"></div>
 
-        <h1>Layered Images</h1>
-        <div className="equi-preview" style={params.bg2d && this.bgTex ? {backgroundImage: 'url('+this.bgTex.image.src+')'} : {}}>
-          {equiBlobUrl === undefined ? '' :
-            <img src={equiBlobUrl} className="equi-render" alt="equirectangular" />}
-        </div>
-
         <h1>Blended Canvas layers</h1>
         <div id="layerBlender2dWrapper">
           <canvas id="layerBlender2d" width="2048" height="1024" />
         </div>
 
-        <h1>fbo 1 (masked render)</h1>
+        <h1>fbo 1 (masked and shadowed render)</h1>
         <div class="fboWrapper">
           <canvas id="fbo" width="2048" height="1024" />
         </div>
@@ -269,6 +269,17 @@ class App extends Component {
         <h1>fbo 2 (mask)</h1>
         <div class="fboWrapper">
           <canvas id="fbo2" width="2048" height="1024" />
+        </div>
+
+        <h1>fbo 3 (shadows)</h1>
+        <div class="fboWrapper">
+          <canvas id="fbo3" width="2048" height="1024" />
+        </div>
+
+        <h1>Layered Images</h1>
+        <div className="equi-preview" style={params.bg2d && this.bgTex ? {backgroundImage: 'url('+this.bgTex.image.src+')'} : {}}>
+          {equiBlobUrl === undefined ? '' :
+            <img src={equiBlobUrl} className="equi-render" alt="equirectangular" />}
         </div>
       </div>
     );

@@ -147,6 +147,22 @@ function blendOnto(destContext,blendMode,offsetOptions){
 					dst[px+3] = (sRA + sGA + sBA) / 3 * dA * 255;
 					break;
 
+				case 'alphaDarkenMultiply':
+					// var a = (sRA + sGA + sBA) / 3 * 255;
+					dst[px  ] = dRA * sRA * 255;
+					dst[px+1] = dGA * sGA * 255;
+					dst[px+2] = dBA * sBA * 255;
+					dst[px+3] = dA * 255; // restore original alpha value
+					break;
+
+				case 'subtract':
+					// var a = (sRA + sGA + sBA) / 3 * 255;
+					dst[px  ] = Math.max(0.0, r1 - ((1.0-sRA) * 255));
+					dst[px+1] = Math.max(0.0, g1 - ((1.0-sGA) * 255));
+					dst[px+2] = Math.max(0.0, b1 - ((1.0-sBA) * 255));
+					dst[px+3] = dA * 255; // restore original alpha value
+					break;
+
 				case 'screen':
 					dst[px  ] = (sRA + dRA - sRA*dRA) * demultiply;
 					dst[px+1] = (sGA + dGA - sGA*dGA) * demultiply;
