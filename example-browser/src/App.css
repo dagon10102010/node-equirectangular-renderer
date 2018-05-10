@@ -50,4 +50,4 @@
   border: 1px solid gray;
 }
 
-#layerBlender2dWrapper { transform:scale(0.5,0.5); }
+#layerBlender2dWrapper { transform:scale(0.39,0.39); transform-origin: top left; }

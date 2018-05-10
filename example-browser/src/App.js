@@ -1,12 +1,12 @@
 import React, { Component } from 'react';
 import * as THREE from 'three';
 import OrbitControlsPatcher from 'three-orbit-controls';
-import DatGui, { DatFolder, DatNumber, DatBoolean /*, DatButton, DatString */ } from 'react-dat-gui';
+import DatGui, { DatNumber, DatBoolean /*, DatFolder, DatButton, DatString */ } from 'react-dat-gui';
 import '../node_modules/react-dat-gui/build/react-dat-gui.css';
 import { createTexturedPlaneRenderer } from 'equirectangular-renderer';
 import localEqui from '../node_modules/equirectangular-renderer/lib/three-CubemapToEquirectangular';
 import './App.css';
-import ContextBlender from './ContextBlender';
+import './ContextBlender'; // adds blendTo method to Canvas' 2d contexts
 
 // apply OrbitControls 'patch' to our THREE intance, so it's available from there
 const OrbitControls = OrbitControlsPatcher(THREE);
@@ -150,8 +150,12 @@ class App extends Component {
 
     this.lastCanvas = canvas;
     if (this.layerBlender2d && canvas.width) {
+      var target2d = this.layerBlender2d.getContext('2d');
+      target2d.clearRect(0,0,this.layerBlender2d.width, this.layerBlender2d.height);
+
+      // console.log('Blending t')
       try {
-        canvas.getContext('2d').blendOnto(this.layerBlender2d.getContext('2d'), 'normal', {width: 800, height: 400});
+        canvas.getContext('2d').blendOnto(target2d, 'normal');
       } catch (err) {
         console.log('caught error: ', err);
       }
@@ -204,15 +208,15 @@ class App extends Component {
         <h1>Three.js 3d Scene</h1>
         <div className="three-scene"></div>
 
-        <h1>Blended Canvas layers</h1>
-        <div id="layerBlender2dWrapper">
-          <canvas id="layerBlender2d" width="2048" height="1024" />
-        </div>
-
         <h1>Layered Images</h1>
         <div className="equi-preview" style={params.bg2d && this.bgTex ? {backgroundImage: 'url('+this.bgTex.image.src+')'} : {}}>
           {equiBlobUrl === undefined ? '' :
             <img src={equiBlobUrl} className="equi-render" alt="equirectangular" />}
+        </div>
+
+        <h1>Blended Canvas layers</h1>
+        <div id="layerBlender2dWrapper">
+          <canvas id="layerBlender2d" width="2048" height="1024" />
         </div>
       </div>
     );

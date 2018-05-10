@@ -36,8 +36,8 @@ function blendOnto(destContext,blendMode,offsetOptions){
 				offsets[key] = (offsetOptions && offsetOptions[key]) || defaultOffsets[key];
 			}
 		}
-		if (offsets.width =='auto') offsets.width =this.canvas.width;
-		if (offsets.height=='auto') offsets.height=this.canvas.height;
+		if (offsets.width ==='auto') offsets.width =this.canvas.width;
+		if (offsets.height==='auto') offsets.height=this.canvas.height;
 		offsets.width  = Math.min(offsets.width, this.canvas.width-offsets.sourceX, destContext.canvas.width-offsets.destX );
 		offsets.height = Math.min(offsets.height,this.canvas.height-offsets.sourceY,destContext.canvas.height-offsets.destY);
 
@@ -68,11 +68,11 @@ function blendOnto(destContext,blendMode,offsetOptions){
 		}
 
 		function Fdodge(a,b) {
-			return (b==255 && a==0) ? 255 : Math.min(255,(a<<8)/(255-b));
+			return (b===255 && a===0) ? 255 : Math.min(255,(a<<8)/(255-b));
 		}
 
 		function Fburn(a,b) {
-			return (b==255 && a==0) ? 0 : 255-Math.min(255,((255-a)<<8)/b);
+			return (b===255 && a===0) ? 0 : 255-Math.min(255,((255-a)<<8)/b);
 		}
 
 
