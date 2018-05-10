@@ -1,11 +1,12 @@
 import React, { Component } from 'react';
 import * as THREE from 'three';
 import OrbitControlsPatcher from 'three-orbit-controls';
-import DatGui, { DatFolder, DatNumber, DatBoolean /*, DatButton, DatString */ } from 'react-dat-gui';
+import DatGui, { DatNumber, DatBoolean, DatFolder /*, DatButton, DatString */ } from 'react-dat-gui';
 import '../node_modules/react-dat-gui/build/react-dat-gui.css';
 import { createTexturedPlaneRenderer } from 'equirectangular-renderer';
 import localEqui from '../node_modules/equirectangular-renderer/lib/three-CubemapToEquirectangular';
 import './App.css';
+import './ContextBlender'; // adds blendTo method to Canvas' 2d contexts
 
 // apply OrbitControls 'patch' to our THREE intance, so it's available from there
 const OrbitControls = OrbitControlsPatcher(THREE);
@@ -18,11 +19,13 @@ class App extends Component {
 
     this.state = {
       params: {
-        translateX: -90, translateY: -99, translateZ: -5.6,
+        translateX: -90, translateY: 0, translateZ: -5.6,
         scaleX: 10, scaleY: 10, scaleZ: 1,
         rotateX: -88, rotateY: 7, rotateZ: -7,
         bg3d: false,
-        bg2d: false
+        bg2d: false,
+        canvasBG: true,
+        canvasWindowMask: true,
       },
       equiBlobUrl: undefined,
       liveEquiDelay: 100
@@ -39,6 +42,7 @@ class App extends Component {
 
     // preload bg texture
     this.bgTex = new THREE.TextureLoader().load( '2294472375_24a3b8ef46_o.jpg' );
+    this.windowMaskTex = new THREE.TextureLoader().load( 'window_mask.jpg' );
 
     createTexturedPlaneRenderer({image: 'UV_Grid_Sm.jpg', winWidth: 800, winHeight: 600, resolution: [1024,512], translate: [0,0,-20], scale: [1,0.5,0.5]})
     .then((ctx) => {
@@ -53,9 +57,12 @@ class App extends Component {
       document.addEventListener('keydown', (e) => this.onKeyDown(e));
 
       if (OrbitControls) {
+
         this.controls = new OrbitControls(this.ctx.camera, this.renderer.domElement);
-        // this.controls.update();
-        this.controls.target.z = -0.00001;  // for some reason the OrbitControls don't work without this
+        this.controls.update();
+        this.controls.target.z = -0.1;  // for some reason the OrbitControls don't work without this
+        this.controls.target.x = -0.2;
+
       } else {
         console.log('OrbitControls not available!');
       }
@@ -69,6 +76,8 @@ class App extends Component {
     .catch((err) => {
       console.log('createTexturedPlaneRenderer err:', err);
     });
+
+    this.layerBlender2d = document.getElementById('layerBlender2d');
   }
 
   addToScene(obj, scene, add) {
@@ -132,15 +141,63 @@ class App extends Component {
       return;
     }
 
+    // create our equirectangular renderer (only first time)
     if (this.equi === undefined)
       this.equi = new localEqui( this.renderer, true, {width: 2048, height: 1024} );
 
+    // perform equirectangular render
     var canvas = this.equi.updateAndGetCanvas(this.ctx.camera, this.scene);
     // this.ctx.render();
+
+    // update our UI with new equirectangular image
     // this.ctx.equi.canvas.toBlob((blob) => {
     canvas.toBlob((blob) => {
       this.setState({ equiBlobUrl: URL.createObjectURL(blob) });
     });
+
+    // update our layer blender canvas manually
+    this.lastCanvas = canvas; // for debugging
+    if (this.layerBlender2d && canvas.width) {
+      var target2d = this.layerBlender2d.getContext('2d');
+
+      // clear
+      target2d.clearRect(0,0,this.layerBlender2d.width, this.layerBlender2d.height);
+      // draw background texture,
+      if (this.bgTex && this.state.params.canvasBG === true)
+        target2d.drawImage(this.bgTex.image, 0, 0, this.layerBlender2d.width, this.layerBlender2d.height);
+
+      // window mask
+      if (this.windowMaskTex && this.state.params.canvasWindowMask) {
+        var fbo = document.getElementById('fbo');
+        var fbo_2d = fbo.getContext('2d');
+        var fbo2 = document.getElementById('fbo2');
+        var fbo2_2d = fbo2.getContext('2d');
+
+        console.log('clearing fbo...');
+        fbo_2d.clearRect(0, 0, fbo.width, fbo.height);
+
+        console.log('drawing material plane to fbo2...');
+        canvas.getContext('2d').blendOnto(fbo_2d, 'normal');
+
+        console.log('drawing window mask to fbo...');
+        fbo2_2d.drawImage(this.windowMaskTex.image, 0, 0, fbo2.width, fbo2.height);
+
+        console.log('blending window mask onto material plane...');
+        fbo2_2d.blendOnto(fbo_2d, 'alphaMask');
+
+        console.log('blending masked material plane onto background...');
+        fbo_2d.blendOnto(target2d, 'normal');
+      } else {
+
+        // dynamically rendered material plane
+        try {
+          canvas.getContext('2d').blendOnto(target2d, 'normal');
+        } catch (err) {
+          console.log('caught error while blending: ', err);
+        }
+
+      }
+    }
   }
 
   onParamsChange(params) {
@@ -169,7 +226,7 @@ class App extends Component {
     return (
       <div className="App">
         <DatGui data={params} onUpdate={(params) => this.onParamsChange(params)}>
-          {/* <DatFolder title="plane transform"> */}
+
             <DatNumber path='translateX' label='translate-x' min={-1000} max={1000} step={0.1} />
             <DatNumber path='translateY' label='translate-y' min={-1000} max={1000} step={0.1} />
             <DatNumber path='translateZ' label='translate-z' min={-1000} max={1000} step={0.1} />
@@ -181,16 +238,37 @@ class App extends Component {
             <DatNumber path='rotateX' label='rotate-x' min={-360} max={360} step={1} />
             <DatNumber path='rotateY' label='rotate-y' min={-360} max={360} step={1} />
             <DatNumber path='rotateZ' label='rotate-z' min={-360} max={360} step={1} />
-          {/* </DatFolder> */}
+
+            <DatFolder title="canvas layer blender">
+              <DatBoolean path='canvasBG' label='background' />
+              <DatBoolean path='canvasWindowMask' label='window mask' />
+            </DatFolder>
 
           <DatBoolean path='bg3d' label='3d background' />
           <DatBoolean path='bg2d' label='2d background' />
         </DatGui>
+        <h1>Three.js 3d Scene</h1>
         <div className="three-scene"></div>
 
+        <h1>Layered Images</h1>
         <div className="equi-preview" style={params.bg2d && this.bgTex ? {backgroundImage: 'url('+this.bgTex.image.src+')'} : {}}>
           {equiBlobUrl === undefined ? '' :
             <img src={equiBlobUrl} className="equi-render" alt="equirectangular" />}
+        </div>
+
+        <h1>Blended Canvas layers</h1>
+        <div id="layerBlender2dWrapper">
+          <canvas id="layerBlender2d" width="2048" height="1024" />
+        </div>
+
+        <h1>fbo 1 (masked render)</h1>
+        <div class="fboWrapper">
+          <canvas id="fbo" width="2048" height="1024" />
+        </div>
+
+        <h1>fbo 2 (mask)</h1>
+        <div class="fboWrapper">
+          <canvas id="fbo2" width="2048" height="1024" />
         </div>
       </div>
     );
