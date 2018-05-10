@@ -162,11 +162,7 @@ class App extends Component {
     if (this.layerBlender2d && canvas.width) {
       var target2d = this.layerBlender2d.getContext('2d');
 
-      // clear
-      target2d.clearRect(0,0,this.layerBlender2d.width, this.layerBlender2d.height);
-      // draw background texture,
-      if (this.bgTex && this.state.params.canvasBG === true)
-        target2d.drawImage(this.bgTex.image, 0, 0, this.layerBlender2d.width, this.layerBlender2d.height);
+
 
       var fbo = document.getElementById('fbo');
       var fbo_2d = fbo.getContext('2d');
@@ -199,9 +195,23 @@ class App extends Component {
         fbo2_2d.blendOnto(fbo_2d, 'alphaMask');
       }
 
-      // draw to target
+
+      // clear target canvas
+      target2d.clearRect(0,0,this.layerBlender2d.width, this.layerBlender2d.height);
+
+      // // draw background to target
+      // if (this.bgTex && this.state.params.canvasBG === true)
+      //   target2d.drawImage(this.bgTex.image, 0, 0, this.layerBlender2d.width, this.layerBlender2d.height);
+
       console.log('blending masked material plane onto background...');
       fbo_2d.blendOnto(target2d, 'normal');
+
+      if (this.bgTex && this.state.params.canvasBG === true) {
+        console.log('drawing background texture to fbo...');
+        fbo3_2d.drawImage(this.bgTex.image, 0, 0, fbo3.width, fbo3.height);
+        console.log('blending background fbo to target...');
+        fbo3_2d.blendOnto(target2d, 'under');
+      }
     }
   }
 
