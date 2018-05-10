@@ -143,6 +143,10 @@ function blendOnto(destContext,blendMode,offsetOptions){
 					dst[px+2] = (sBA + dBA - dBA*sA) * demultiply;
 				break;
 
+				case 'alphaMask':
+					dst[px+3] = (sRA + sGA + sBA) / 3 * dA * 255;
+					break;
+
 				case 'screen':
 					dst[px  ] = (sRA + dRA - sRA*dRA) * demultiply;
 					dst[px+1] = (sGA + dGA - sGA*dGA) * demultiply;

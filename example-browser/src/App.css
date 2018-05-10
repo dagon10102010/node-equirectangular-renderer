@@ -51,3 +51,5 @@
 }
 
 #layerBlender2dWrapper { transform:scale(0.39,0.39); transform-origin: top left; }
+
+.fboWrapper { transform:scale(0.39,0.39); transform-origin: top left; }
