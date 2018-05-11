@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import * as THREE from 'three';
 import OrbitControlsPatcher from 'three-orbit-controls';
-import DatGui, { DatNumber, DatBoolean, DatFolder /*, DatButton, DatString */ } from 'react-dat-gui';
+import DatGui, { DatNumber, DatBoolean, DatFolder, DatString /*, DatButton, DatSelect */ } from 'react-dat-gui';
 import '../node_modules/react-dat-gui/build/react-dat-gui.css';
 import { createTexturedPlaneRenderer } from 'equirectangular-renderer';
 import localEqui from '../node_modules/equirectangular-renderer/lib/three-CubemapToEquirectangular';
@@ -26,10 +26,12 @@ class App extends Component {
         bg2d: false,
         canvasBG: true,
         canvasWindowMask: true,
-        canvasShadows: true
+        canvasShadows: true,
+        layerscript: "[render]:normal,window_shadows.jpg:subtract,window_mask.jpg:alphaMask,2294472375_24a3b8ef46_o.jpg:under"
       },
       equiBlobUrl: undefined,
-      liveEquiDelay: 100
+      liveEquiDelay: 100,
+      layerCount: 0
     };
   }
 
@@ -41,10 +43,13 @@ class App extends Component {
     const el = document.getElementsByClassName('three-scene')[0];
     el.appendChild(this.renderer.domElement);
 
-    // preload bg texture
-    this.bgTex = new THREE.TextureLoader().load( '2294472375_24a3b8ef46_o.jpg' );
-    this.windowMaskTex = new THREE.TextureLoader().load( 'window_mask.jpg' );
-    this.windowShadowsTex = new THREE.TextureLoader().load( 'window_shadows.jpg' );
+    // preload textures
+    this.texLoader = new THREE.TextureLoader();
+    this.preloadedTextures = {};
+    ['2294472375_24a3b8ef46_o.jpg', 'window_mask.jpg', 'window_shadows.jpg'].forEach((url) => {
+        this.preloadedTextures[url] = this.texLoader.load(url);
+    })
+    this.bgTex = this.preloadedTextures['2294472375_24a3b8ef46_o.jpg'];
 
     createTexturedPlaneRenderer({image: 'UV_Grid_Sm.jpg', winWidth: 800, winHeight: 600, resolution: [1024,512], translate: [0,0,-20], scale: [1,0.5,0.5]})
     .then((ctx) => {
@@ -126,7 +131,7 @@ class App extends Component {
     geometry.scale( -1, 1, 1 );
 
     let material = new THREE.MeshBasicMaterial( {
-      map: this.bgTex //new THREE.TextureLoader().load( '2294472375_24a3b8ef46_o.jpg' )
+      map: this.bgTex //this.texLoader.load( '2294472375_24a3b8ef46_o.jpg' )
     });
     // let material = new THREE.MeshBasicMaterial({ color: clr || 0x00ffff });
     // material.depthTest = false;
@@ -159,59 +164,52 @@ class App extends Component {
 
     // update our layer blender canvas manually
     this.lastCanvas = canvas; // for debugging
-    if (this.layerBlender2d && canvas.width) {
+    if (this.layerBlender2d) {
       var target2d = this.layerBlender2d.getContext('2d');
-
-
 
       var fbo = document.getElementById('fbo');
       var fbo_2d = fbo.getContext('2d');
-      var fbo2 = document.getElementById('fbo2');
-      var fbo2_2d = fbo2.getContext('2d');
-      var fbo3 = document.getElementById('fbo3');
-      var fbo3_2d = fbo3.getContext('2d');
-
-      console.log('clearing fbo...');
-      fbo_2d.clearRect(0, 0, fbo.width, fbo.height);
-
-      console.log('drawing material plane to fbo2...');
-      canvas.getContext('2d').blendOnto(fbo_2d, 'normal');
-
-      // window shadows
-      if (this.state.params.canvasShadows) {
-        console.log('drawing window shadows to fbo...');
-        fbo3_2d.drawImage(this.windowShadowsTex.image, 0, 0, fbo3.width, fbo3.height);
-
-        console.log('blending shadows to masked material plane...');
-        fbo3_2d.blendOnto(fbo_2d, 'subtract');
-      }
-
-      // window mask
-      if (this.windowMaskTex && this.state.params.canvasWindowMask) {
-        console.log('drawing window mask to fbo...');
-        fbo2_2d.drawImage(this.windowMaskTex.image, 0, 0, fbo2.width, fbo2.height);
-
-        console.log('blending window mask onto material plane...');
-        fbo2_2d.blendOnto(fbo_2d, 'alphaMask');
-      }
-
+      // console.log('clearing fbo...');
+      // fbo_2d.clearRect(0, 0, fbo.width, fbo.height);
 
       // clear target canvas
       target2d.clearRect(0,0,this.layerBlender2d.width, this.layerBlender2d.height);
 
-      // // draw background to target
-      // if (this.bgTex && this.state.params.canvasBG === true)
-      //   target2d.drawImage(this.bgTex.image, 0, 0, this.layerBlender2d.width, this.layerBlender2d.height);
+      const script = this.state.params.layerscript;
+      script.split(',').forEach((layerScript, idx) => {
+        console.log('Rendering layer #', idx);
 
-      console.log('blending masked material plane onto background...');
-      fbo_2d.blendOnto(target2d, 'normal');
+        const layerScriptPieces = layerScript.split(':');
 
-      if (this.bgTex && this.state.params.canvasBG === true) {
-        console.log('drawing background texture to fbo...');
-        fbo3_2d.drawImage(this.bgTex.image, 0, 0, fbo3.width, fbo3.height);
-        console.log('blending background fbo to target...');
-        fbo3_2d.blendOnto(target2d, 'under');
-      }
+        if (layerScriptPieces.length !== 2) {
+          console.log('bad script layer format');
+          return;
+        }
+
+        const src = layerScriptPieces[0].trim();
+        const blendMode = layerScriptPieces[1].trim();
+
+        if (src === '[render]') {
+          canvas.getContext('2d').blendOnto(target2d, blendMode);
+          return;
+        }
+
+        // assume src is the url of an imag file; load is as texture
+        console.log(`loading texture: '${src}'`);
+        const tex = this.preloadedTextures[src];
+        // const tex = this.texLoader.load(src);
+        // console.log('texture:', tex);
+        if (tex.image === undefined) {
+          console.log('failed to load texture');
+          return;
+        }
+        // draw to our 'fbo' (canvas)
+        console.log('drawing texture to fbo');
+        fbo_2d.drawImage(tex.image, 0, 0, fbo.width, fbo.height); // image.width image.height?
+        // blend onto target
+        console.log('blending texture to target with blend mode: ', blendMode);
+        fbo_2d.blendOnto(target2d, blendMode);
+      });
     }
   }
 
@@ -236,29 +234,30 @@ class App extends Component {
   }
 
   render() {
-    const { equiBlobUrl, params } = this.state;
+    const { equiBlobUrl, params, layerCount } = this.state;
 
     return (
       <div className="App">
         <DatGui data={params} onUpdate={(params) => this.onParamsChange(params)}>
+          <DatNumber path='translateX' label='translate-x' min={-1000} max={1000} step={0.1} />
+          <DatNumber path='translateY' label='translate-y' min={-1000} max={1000} step={0.1} />
+          <DatNumber path='translateZ' label='translate-z' min={-1000} max={1000} step={0.1} />
 
-            <DatNumber path='translateX' label='translate-x' min={-1000} max={1000} step={0.1} />
-            <DatNumber path='translateY' label='translate-y' min={-1000} max={1000} step={0.1} />
-            <DatNumber path='translateZ' label='translate-z' min={-1000} max={1000} step={0.1} />
+          <DatNumber path='scaleX' label='scale-x' min={-100} max={100} step={0.01} />
+          <DatNumber path='scaleY' label='scale-y' min={-100} max={100} step={0.01} />
+          {/* <DatNumber path='scaleZ' label='scale-z' min={-10} max={10} step={0.01} /> */}
 
-            <DatNumber path='scaleX' label='scale-x' min={-100} max={100} step={0.01} />
-            <DatNumber path='scaleY' label='scale-y' min={-100} max={100} step={0.01} />
-            {/* <DatNumber path='scaleZ' label='scale-z' min={-10} max={10} step={0.01} /> */}
+          <DatNumber path='rotateX' label='rotate-x' min={-360} max={360} step={1} />
+          <DatNumber path='rotateY' label='rotate-y' min={-360} max={360} step={1} />
+          <DatNumber path='rotateZ' label='rotate-z' min={-360} max={360} step={1} />
 
-            <DatNumber path='rotateX' label='rotate-x' min={-360} max={360} step={1} />
-            <DatNumber path='rotateY' label='rotate-y' min={-360} max={360} step={1} />
-            <DatNumber path='rotateZ' label='rotate-z' min={-360} max={360} step={1} />
+          <DatString path="layerscript" label="Layers" />
 
-            {/* <DatFolder title="canvas layer blender"> */}
-              <DatBoolean path='canvasBG' label='background' />
-              <DatBoolean path='canvasWindowMask' label='window mask' />
-              <DatBoolean path='canvasShadows' label='window shadows' />
-            {/* </DatFolder> */}
+          <DatFolder title="canvas layer blender">
+            <DatBoolean path='canvasBG' label='background' />
+            <DatBoolean path='canvasWindowMask' label='window mask' />
+            <DatBoolean path='canvasShadows' label='window shadows' />
+          </DatFolder>
 
           <DatBoolean path='bg3d' label='3d background' />
           <DatBoolean path='bg2d' label='2d background' />
@@ -272,18 +271,8 @@ class App extends Component {
         </div>
 
         <h1>fbo 1 (masked and shadowed render)</h1>
-        <div class="fboWrapper">
+        <div className="fboWrapper">
           <canvas id="fbo" width="2048" height="1024" />
-        </div>
-
-        <h1>fbo 2 (mask)</h1>
-        <div class="fboWrapper">
-          <canvas id="fbo2" width="2048" height="1024" />
-        </div>
-
-        <h1>fbo 3 (shadows)</h1>
-        <div class="fboWrapper">
-          <canvas id="fbo3" width="2048" height="1024" />
         </div>
 
         <h1>Layered Images</h1>
