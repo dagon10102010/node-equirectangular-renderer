@@ -1,6 +1,6 @@
 const { createTexturedPlaneRenderer } = require('../index');
 
-createTexturedPlaneRenderer({image: __dirname+'/UV_Grid_Sm.jpg', resolution: [1024,512], scale: [1,0.5,0.5]}).then(function(ctx) {
+createTexturedPlaneRenderer({image: __dirname+'/UV_Grid_Sm.jpg', verbose: true, resolution: [1024,512], scale: [1,0.5,0.5]}).then(function(ctx) {
   // for(var i=0; i<3; i+=1) {
   //   ctx.update({translate: [0,0,-5*i], rotation: [0,0,i]});
   //   ctx.render();
@@ -14,6 +14,7 @@ createTexturedPlaneRenderer({image: __dirname+'/UV_Grid_Sm.jpg', resolution: [10
     ctx.exportImage(p);
   }
 
+  console.log('scheduling frame renders...');
   setTimeout(function(){ func(0); }, 0000);
   setTimeout(function(){ func(1); }, 1000);
   setTimeout(function(){ func(2); }, 2000);
