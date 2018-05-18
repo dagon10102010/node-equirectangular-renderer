@@ -10,6 +10,7 @@ function createTexturedPlaneRenderer(opts) {
     var winH = opts.winHeight || 720;
     var resolution = opts.resolution || [opts.width || 4096, opts.height || 2048];
     var imageurl = opts.image;
+    var verbose = opts.verbose === true;
 
     var renderer;
 
@@ -17,18 +18,25 @@ function createTexturedPlaneRenderer(opts) {
       renderer = new THREE.WebGLRenderer( { antialias: true });
       renderer.setSize(winW, winH);
     } else {
+      if (verbose) console.log('[createTexturedPlaneRenderer] nodejs-mode detected...');
+      if (verbose) console.log('[createTexturedPlaneRenderer] loading canvas lib...');
       var Canvas = require("canvas");
+      if (verbose) console.log('[createTexturedPlaneRenderer] loading gl lib...');
       var glContext = require('gl')(1,1); //headless-gl
 
       // GL scene renderer
+      if (verbose) console.log('[createTexturedPlaneRenderer] creating canvas...');
       var canvasGL = new Canvas(winW, winH);
       canvasGL.addEventListener = function(event, func, bind_) {}; // mock function to avoid errors inside THREE.WebGlRenderer()
+      if (verbose) console.log('[createTexturedPlaneRenderer] creating renderer...');
       renderer = new THREE.WebGLRenderer( { context: glContext, antialias: true, canvas: canvasGL });
     }
 
     // Equirectangular renderer
-    var equi = new CubemapToEquirectangular( renderer, true, {width: resolution[0], height: resolution[1]} );
+    if (verbose) console.log('[createTexturedPlaneRenderer] creating equi renderer...');
+    var equi = new CubemapToEquirectangular( renderer, true, {width: resolution[0], height: resolution[1], verbose: verbose} );
 
+    if (verbose) console.log('[createTexturedPlaneRenderer] creating scene...');
     // camera
     var camera = new THREE.PerspectiveCamera( 70, winW / winH, 1, 10000 );
     camera.position.set( 0,0,0 );
@@ -59,17 +67,23 @@ function createTexturedPlaneRenderer(opts) {
       plane.rotation.set(rotation[0], rotation[1], rotation[2]);
     }
 
+    if (verbose) console.log('[createTexturedPlaneRenderer] configuring plane...');
     updateFunc(opts);
 
     // plane.position.z = -5.8;
     plane.scale.set(1,1,1);
 
     // load texture data (image) async and resolve/reject promise
+    if (verbose) console.log('[createTexturedPlaneRenderer] loading material texture...');
     getPixels(imageurl, function(err, pixels) {
+
       if(err) {
+        if (verbose) console.err('[createTexturedPlaneRenderer] failed to load material texture...');
         reject(err);
         return;
       }
+
+      if (verbose) console.log('[createTexturedPlaneRenderer] material texture loaded...');
 
       var texture = new THREE.DataTexture( new Uint8Array(pixels.data), pixels.shape[0], pixels.shape[1], THREE.RGBAFormat );
       texture.needsUpdate = true;

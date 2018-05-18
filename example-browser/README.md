@@ -12,8 +12,7 @@ yarn
 #### Start dev-mode
 ```
 npm start
-```
-
+``
 ___
 
 
