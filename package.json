@@ -2,17 +2,17 @@
   "name": "equirectangular-renderer",
   "version": "0.0.0",
   "main": "index.js",
-  "description": "TODO-TODO-TODO",
+  "description": "Generating equirectangular images from blended layers of static images and 3d scenes",
   "repository": {
     "type": "git",
-    "url": "git://github.com/fusefactory/TODO-TODO-TODO"
+    "url": "git://github.com/fusefactory/node-equirectangular-renderer"
   },
   "engines": {
     "npm": ">=5",
     "node": ">=9"
   },
   "author": "Mark vd Korput",
-  "license": "TODO-TODO-TODO",
+  "license": "TODO",
   "scripts": {
     "sample1": "node samples/three-scene-to-png.js",
     "sample2": "node samples/three-scene-to-equirectangular.js",
