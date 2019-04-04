@@ -12,8 +12,9 @@ yarn
 #### Start dev-mode
 ```
 npm start
-``
+```
 ___
+# Original README
 
 
 This project was bootstrapped with [Create React App](https://github.com/facebookincubator/create-react-app).

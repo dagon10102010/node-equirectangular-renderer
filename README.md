@@ -14,7 +14,7 @@ yarn
 
 ### Example application
 
-See the ```example-browser``` folder for an in-browser example. The application was created using [Create React App](https://github.com/facebookincubator/create-react-app), see it [README.md](example-browser/README.md) for instructions.
+See the ```example-browser``` folder for an in-browser example. The application was created using [Create React App](https://github.com/facebookincubator/create-react-app), see its [README.md](example-browser/README.md) for instructions.
 
 ***TL;DR***
 
